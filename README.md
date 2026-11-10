@@ -10,9 +10,11 @@
 
 ---
 
-## 一、可直接运行
+## 一、下载与运行
 
-`dist/` 是已经打包好的独立程序（含 Qt 运行库），无需安装任何环境：
+**直接下载**：[CounterForge v1.0.0 · Windows x64](https://github.com/wter-28/CounterForge/releases/latest)（内含 Qt 6 运行库，解压即用，无需安装 Qt）。
+
+源码构建后同样可以直接运行：
 
 ```
 dist/CounterForge.exe
