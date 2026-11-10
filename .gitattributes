@@ -1,0 +1,6 @@
+# 统一换行：源码走 LF，Windows 脚本走 CRLF
+* text=auto eol=lf
+*.bat text eol=crlf
+*.png binary
+*.jpg binary
+*.ico binary

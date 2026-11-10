@@ -1,0 +1,20 @@
+# 构建产物
+build/
+build-*/
+cmake-build-*/
+*.o
+*.obj
+
+# 打包目录里的二进制与 Qt 运行库（体积大，按需自行 windeployqt）
+dist/*
+!dist/samples/
+!dist/samples/*.cfproj
+
+# 编辑器 / 系统
+.vs/
+.idea/
+.vscode/
+*.user
+*.autosave
+Thumbs.db
+desktop.ini
