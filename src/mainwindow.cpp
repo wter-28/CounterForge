@@ -251,7 +251,7 @@ void MainWindow::buildUi()
 
     QAction *aAbout = mkAct(QStringLiteral("关于 CounterForge"), QKeySequence(), [this] {
         QMessageBox::about(this, QStringLiteral("关于 CounterForge"),
-            QStringLiteral("<b>CounterForge 1.0</b><br>"
+            QStringLiteral("<b>CounterForge 1.1</b><br>"
                            "面向兵棋推演的算子在制设计器。<br><br>"
                            "纯 C++ / Qt6 矢量绘制，支持 300&nbsp;dpi 印刷级输出。<br>"
                            "符号体系参照北约 APP-6 风格。<br><br>"

@@ -1,0 +1,46 @@
+{
+  "style": {
+    "shadow": true,
+    "texture": true,
+    "weathering": true
+  },
+  "counters": [
+    {
+      "superior": "72A.K",
+      "designation": "27",
+      "mark": "★",
+      "echelon": "师",
+      "branch": "装甲兵",
+      "combat": 4,
+      "movement": 6,
+      "stacking": 2,
+      "formationColor": "紫",
+      "showDesignation": true
+    },
+    {
+      "superior": "9Ge.K",
+      "echelon": "X",
+      "branch": "步兵",
+      "combat": 3,
+      "movement": 4,
+      "stacking": 1,
+      "formationColor": "钢蓝"
+    },
+    {
+      "superior": "补给",
+      "echelon": "无",
+      "branch": "补给队",
+      "movement": 5,
+      "formationColor": 13,
+      "showEchelon": false,
+      "showStackMark": false
+    }
+  ],
+  "outputs": [
+    { "type": "png", "dir": "out", "size": 1200 },
+    { "type": "png", "index": 0, "file": "out/72AK_2400.png", "size": 2400, "transparent": false },
+    { "type": "sheet", "file": "out/a4_300dpi.png", "dpi": 300, "mm": 22, "cutMarks": true },
+    { "type": "csv", "file": "out/counters.csv" },
+    { "type": "project", "file": "out/counters.cfproj" }
+  ]
+}

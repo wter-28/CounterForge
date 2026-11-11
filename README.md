@@ -134,7 +134,57 @@ cmake --build build
 
 ![A4 拼版](docs/A4拼版示例.png)
 
-## 六、符号约定
+## 六、JSON 接口（给 Agent / 脚本）
+
+无界面调用，一条命令完成「改参数 → 导出」，适合让 Agent 生成、批量改、出图：
+
+```bat
+CounterForge.exe --json spec.json --out 输出目录 --result 结果.json
+CounterForge.exe --schema                :: 打印全部字段、枚举、默认值（机器可读）
+```
+
+- `--json -` 从标准输入读 spec；`--out` 是相对路径的基准目录（默认 `./out`）；`--result` 另存一份结果 JSON。
+- 退出码：`0` 成功，`2` 参数或数据错误。
+
+**输入**
+
+```json
+{
+  "style": { "shadow": true, "texture": true, "weathering": true },
+  "counters": [
+    { "superior": "72A.K", "designation": "27", "mark": "★",
+      "echelon": "师", "branch": "装甲兵",
+      "combat": 4, "movement": 6, "stacking": 2,
+      "formationColor": "紫", "showDesignation": true }
+  ],
+  "outputs": [
+    { "type": "png", "dir": "out", "size": 1200 },
+    { "type": "png", "index": 0, "file": "hero.png", "size": 2400, "transparent": false },
+    { "type": "sheet", "file": "a4.png", "dpi": 300, "mm": 22, "cutMarks": true, "labels": true },
+    { "type": "csv", "file": "data.csv" },
+    { "type": "project", "file": "project.cfproj" }
+  ]
+}
+```
+
+- 规模 / 兵种可写**中文名、英文名、北约缩写或索引**（`"师"` / `"Division"` / `"XX"` / `9`）；写错会返回该字段的可用取值清单。
+- `formationColor` 可写 `#RRGGBB`、16 色预设名（`"钢蓝"`）或预设索引。
+- `stacking` 只有 1 / 2：1 印空圈、2 印实心圈。
+- 省略 `outputs` 时，默认每枚导出一张 1200 px PNG。
+- 也可以直接把 `.cfproj` 工程文件当 spec 用（加一个 `outputs` 键即可），旧工程照样能跑。
+
+**输出**（写到 stdout，便于管道 / Agent 直接读）
+
+```json
+{"ok": true, "api": "counterforge.json/1", "counters": 3,
+ "written": [{"type": "png", "index": 0, "path": ".../72A.K_01.png", "px": 1200}]}
+```
+
+失败时 `ok:false`，并给出 `error.path`（如 `counters[0].branch`）。
+
+完整字段表用 `--schema` 取，与代码里的枚举同源，不会过期。示例 spec：`examples/agent-sample.json`。
+
+## 七、符号约定
 
 见程序内 `F1` 图例，或 `docs/符号图例.png`。要点：
 
@@ -145,7 +195,7 @@ cmake --build build
 
 ![符号图例](docs/符号图例.png)
 
-## 七、目录结构
+## 八、目录结构
 
 ```
 CounterForge/
@@ -153,16 +203,18 @@ CounterForge/
 │  ├─ main.cpp              程序入口、深色主题、自检渲染入口
 │  ├─ counterspec.h/.cpp    算子数据模型、枚举与 JSON 序列化
 │  ├─ counterrenderer.h/.cpp 绘制引擎（版面、北约符号、规模、数值、拼版）
+│  ├─ jsonapi.h/.cpp        JSON 接口（--json / --schema）
 │  ├─ widgets.h/.cpp        预览画布、算子库列表委托
 │  ├─ legenddialog.h/.cpp   符号图例
 │  └─ mainwindow.h/.cpp     主界面、项目管理、导出
+├─ examples/                JSON 接口示例 spec
 ├─ dist/                    已打包的可运行程序 + 示例项目
 ├─ docs/                    截图与输出示例
 ├─ CMakeLists.txt
 └─ build.bat
 ```
 
-## 八、自检（开发用）
+## 九、自检（开发用）
 
 ```bat
 CounterForge.exe --selftest out.png      :: 九枚样例算子拼图

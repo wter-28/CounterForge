@@ -10,6 +10,11 @@ dist/*
 !dist/samples/
 !dist/samples/*.cfproj
 
+# JSON 接口的默认输出目录
+out/
+_apitest*/
+_mixed.json
+
 # 编辑器 / 系统
 .vs/
 .idea/

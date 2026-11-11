@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(CounterForge VERSION 1.0.0 LANGUAGES CXX)
+project(CounterForge VERSION 1.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -14,6 +14,7 @@ add_executable(CounterForge WIN32
     src/widgets.cpp
     src/legenddialog.cpp
     src/mainwindow.cpp
+    src/jsonapi.cpp
 )
 
 target_link_libraries(CounterForge PRIVATE Qt6::Widgets Qt6::Gui)

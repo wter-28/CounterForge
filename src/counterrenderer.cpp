@@ -1279,7 +1279,10 @@ QImage sheetImage(const QVector<CounterSpec> &items, int dpi, qreal counterMm,
             f.setPixelSize(int(2.2 * mm2px));
             p.setFont(f);
             p.setPen(QColor(142, 134, 118));
-            p.drawText(QRectF(x, y + size, size, labelH), Qt::AlignCenter, s.title());
+            // 标签按格宽截断，长番号不会压到隔壁格
+            const QString label = QFontMetricsF(f).elidedText(s.title(), Qt::ElideRight,
+                                                              size - 1.2 * mm2px);
+            p.drawText(QRectF(x, y + size, size, labelH), Qt::AlignCenter, label);
         }
     }
 

@@ -10,6 +10,7 @@
 #include <QTimer>
 
 #include "counterrenderer.h"
+#include "jsonapi.h"
 #include "legenddialog.h"
 #include "mainwindow.h"
 
@@ -47,7 +48,7 @@ int main(int argc, char *argv[])
     app.setApplicationName(QStringLiteral("CounterForge"));
     app.setApplicationDisplayName(QStringLiteral("CounterForge"));
     app.setOrganizationName(QStringLiteral("CounterForge"));
-    app.setApplicationVersion(QStringLiteral("1.0.0"));
+    app.setApplicationVersion(QStringLiteral("1.1.0"));
 
     if (QStyleFactory::keys().contains(QStringLiteral("Fusion"), Qt::CaseInsensitive))
         app.setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
@@ -85,6 +86,10 @@ int main(int argc, char *argv[])
         const int i = args.indexOf(key);
         return (i >= 0 && i + 1 < args.size()) ? args.at(i + 1) : fallback;
     };
+
+    // ── JSON 接口（供 Agent / 脚本调用，无界面）
+    if (args.contains(QStringLiteral("--json")) || args.contains(QStringLiteral("--schema")))
+        return cf::runJsonApi(args);
 
     // ── 自检：样张拼图
     if (args.contains(QStringLiteral("--selftest"))) {
