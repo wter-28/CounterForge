@@ -1,12 +1,28 @@
 # CounterForge
 
-面向兵棋（wargame）推演的**算子在制设计器**。纯 C++ / Qt6 绘制，一枚算子从参数到印刷成品只需几步。
+面向兵棋（wargame）推演的**算子在制设计器** + **六角格地图渲染引擎**。纯 C++ / Qt6 绘制，一枚算子从参数到印刷成品只需几步，一张战区图从 JSON 数据到 300dpi 成品一次出图。
 
 作者：**wter**
 
 
 
 ![界面总览](docs/界面总览.png)
+
+### 巴巴罗萨行动 · 三张战区图
+
+`--map` 模式可从纯 JSON 数据渲染 1940 年代参谋部风格的地形图（程序化纸张纹理 + 六角格 + 等高线晕滃 + 河流/铁路/城市）。
+
+![巴巴罗萨三战区](maps/preview.png)
+
+- 北方集团军群：东普鲁士 — 列宁格勒（波罗的海、芬兰湾、拉多加湖）
+- 中央集团军群：布格河 — 斯摩棱斯克（普里皮亚季沼泽、第聂伯河上游）
+- 南方集团军群：加利西亚 — 基辅 — 黑海（喀尔巴阡山、第聂伯河、克里木）
+
+数据见 `maps/*.json`，改坐标/地形后一条命令重出：
+
+```bat
+CounterForge.exe --map maps/巴巴罗萨-中央.json --mapout 成品.png --dpi 300
+```
 
 ---
 
@@ -204,10 +220,14 @@ CounterForge/
 │  ├─ counterspec.h/.cpp    算子数据模型、枚举与 JSON 序列化
 │  ├─ counterrenderer.h/.cpp 绘制引擎（版面、北约符号、规模、数值、拼版）
 │  ├─ jsonapi.h/.cpp        JSON 接口（--json / --schema）
+│  ├─ mapspec.h/.cpp        地图数据模型（六角格、地形、河流/铁路、城市）
+│  ├─ maprenderer.h/.cpp    地图渲染（老纸纹理、晕滃、河流、图廓、图例）
 │  ├─ widgets.h/.cpp        预览画布、算子库列表委托
 │  ├─ legenddialog.h/.cpp   符号图例
 │  └─ mainwindow.h/.cpp     主界面、项目管理、导出
 ├─ examples/                JSON 接口示例 spec
+├─ maps/                    巴巴罗萨三战区数据（*.json）+ 预览图
+├─ tools/gen_barbarossa.py  战区数据生成脚本（经纬度 → 六角格栅格化）
 ├─ dist/                    已打包的可运行程序 + 示例项目
 ├─ docs/                    截图与输出示例
 ├─ CMakeLists.txt
@@ -222,6 +242,7 @@ CounterForge.exe --sheet out.png         :: A4 拼版
 CounterForge.exe --legend out.png        :: 符号图例
 CounterForge.exe --shot out.png          :: 主界面截图
 CounterForge.exe project.cfproj --shot out.png
+CounterForge.exe --map maps/*.json --mapout out.png --dpi 300   :: 渲染战区图
 ```
 
 ---

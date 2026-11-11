@@ -15,6 +15,8 @@ add_executable(CounterForge WIN32
     src/legenddialog.cpp
     src/mainwindow.cpp
     src/jsonapi.cpp
+    src/mapspec.cpp
+    src/maprenderer.cpp
 )
 
 target_link_libraries(CounterForge PRIVATE Qt6::Widgets Qt6::Gui)

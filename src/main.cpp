@@ -7,11 +7,16 @@
 #include <QPalette>
 #include <QPixmap>
 #include <QStyleFactory>
+#include <QFile>
+#include <QFileInfo>
+#include <QJsonDocument>
 #include <QTimer>
 
 #include "counterrenderer.h"
 #include "jsonapi.h"
 #include "legenddialog.h"
+#include "maprenderer.h"
+#include "mapspec.h"
 #include "mainwindow.h"
 
 // 诊断/自检用的样例算子
@@ -90,6 +95,39 @@ int main(int argc, char *argv[])
     // ── JSON 接口（供 Agent / 脚本调用，无界面）
     if (args.contains(QStringLiteral("--json")) || args.contains(QStringLiteral("--schema")))
         return cf::runJsonApi(args);
+
+    // ── 地图：渲染一张战区图（--map 数据.json [--mapout 输出.png] [--dpi 300]）
+    if (args.contains(QStringLiteral("--map"))) {
+        const QString specPath = argValue(QStringLiteral("--map"), QString());
+        QFile f(specPath);
+        if (!f.open(QIODevice::ReadOnly)) {
+            fprintf(stderr, "打不开地图数据：%s\n", qPrintable(specPath));
+            return 2;
+        }
+        QJsonParseError perr{};
+        const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &perr);
+        if (doc.isNull()) {
+            fprintf(stderr, "地图 JSON 解析失败：%s\n", qPrintable(perr.errorString()));
+            return 2;
+        }
+        const cf::MapSpec m = cf::MapSpec::fromJson(doc.object());
+        if (!m.isValid()) {
+            fprintf(stderr, "地图数据不完整（cols/rows/terrain）\n");
+            return 2;
+        }
+        const int dpi = qBound(72, argValue(QStringLiteral("--dpi"), QStringLiteral("300")).toInt(), 600);
+        QString out = argValue(QStringLiteral("--mapout"), QString());
+        if (out.isEmpty()) out = QFileInfo(specPath).absolutePath() + QLatin1Char('/')
+                                 + QFileInfo(specPath).completeBaseName() + QStringLiteral(".png");
+        QImage img = cf::mapImage(m, dpi);
+        if (!img.save(out)) {
+            fprintf(stderr, "写入失败：%s\n", qPrintable(out));
+            return 2;
+        }
+        printf("%s  %dx%d px  %.0fx%.0f mm\n", qPrintable(out), img.width(), img.height(),
+               cf::mapSizeMm(m).width(), cf::mapSizeMm(m).height());
+        return 0;
+    }
 
     // ── 自检：样张拼图
     if (args.contains(QStringLiteral("--selftest"))) {
