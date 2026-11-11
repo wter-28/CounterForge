@@ -20,6 +20,10 @@
 
 ![南部地形局部](maps/preview-south.png)
 
+**游戏内使用**：`maps/巴巴罗萨-游戏地图.png`（4096 × 5809 px，约 7 MB）是一张可直接当游戏地图纹理的完整整图；`maps/巴巴罗萨-图例.png` 是配套图例卡（280 × 190 mm），适合当帮助面板或印刷附页。两者与主图同一套配色、符号和数据。
+
+![地图图例卡](maps/巴巴罗萨-图例.png)
+
 - **全线战场**（A0，836 × 1186 mm）：58 × 68 格、16 mm 格距、68 座带标注的城市
 - 北方集团军群：东普鲁士 — 列宁格勒（波罗的海、芬兰湾、拉多加湖）
 - 中央集团军群：布格河 — 斯摩棱斯克（普里皮亚季沼泽、第聂伯河上游）
@@ -34,6 +38,10 @@ CounterForge.exe --map maps/巴巴罗萨-全线.json --mapout 全线战场.png -
 :: 可选：classic 旧式逐格纹理 / satellite 程序化卫星地形
 CounterForge.exe --map maps/巴巴罗萨-全线.json --mapstyle classic   --mapout classic.png   --dpi 300
 CounterForge.exe --map maps/巴巴罗萨-全线.json --mapstyle satellite --mapout satellite.png --dpi 300
+
+:: 游戏用整图（4096 宽）与配套独立图例卡
+CounterForge.exe --map maps/巴巴罗萨-全线.json --mapout 游戏地图.png --dpi 300 --mapwidth 4096
+CounterForge.exe --maplegend maps/巴巴罗萨-全线.json --mapout 地图图例.png --dpi 200
 
 :: 局部 1:1 检查（像素裁切）与快速预览（等比缩到指定宽度）
 CounterForge.exe --map maps/巴巴罗萨-全线.json --dpi 100 --mapcrop 380,1850,1120,1350 --mapout 局部.png
@@ -242,7 +250,7 @@ CounterForge/
 │  ├─ legenddialog.h/.cpp   符号图例
 │  └─ mainwindow.h/.cpp     主界面、项目管理、导出
 ├─ examples/                JSON 接口示例 spec
-├─ maps/                    全线 + 三战区数据（*.json）与预览图
+├─ maps/                    全线 + 三战区数据（*.json）、整图/图例成品与预览图
 ├─ tools/gen_barbarossa.py  地图数据生成脚本（经纬度 → 栅格化 → 地形连片化）
 ├─ dist/                    已打包的可运行程序 + 示例项目
 ├─ docs/                    截图与输出示例
@@ -259,6 +267,7 @@ CounterForge.exe --legend out.png        :: 符号图例
 CounterForge.exe --shot out.png          :: 主界面截图
 CounterForge.exe project.cfproj --shot out.png
 CounterForge.exe --map maps/*.json --mapout out.png --dpi 300   :: 渲染战区图
+CounterForge.exe --maplegend maps/*.json --mapout key.png --dpi 200 :: 独立图例卡
 ```
 
 ---

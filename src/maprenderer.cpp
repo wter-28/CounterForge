@@ -660,12 +660,12 @@ void paintUrbanBlobs(QPainter *p, const MapSpec &m)
         if (city.size < 4 || !m.inside(city.col, city.row)) continue;
         const QPointF ctr = hexCenterMm(m, city.col, city.row);
         p->setPen(Qt::NoPen);
-        p->setBrush(QColor(0x6E, 0x6D, 0x66, 165));
-        for (int i = 0; i < 6; ++i) {
+        p->setBrush(QColor(0x7A, 0x78, 0x70, 140));
+        for (int i = 0; i < 5; ++i) {
             const qreal a = jitter(city.col, city.row, 1500 + i * 7) * 6.283;
-            const qreal d = 0.45 * R * std::sqrt(jitter(city.col, city.row, 1510 + i * 7));
-            const qreal rx = R * (0.38 + 0.34 * jitter(city.col, city.row, 1520 + i * 7));
-            const qreal ry = Hh * (0.26 + 0.22 * jitter(city.col, city.row, 1530 + i * 7));
+            const qreal d = 0.40 * R * std::sqrt(jitter(city.col, city.row, 1510 + i * 7));
+            const qreal rx = R * (0.34 + 0.30 * jitter(city.col, city.row, 1520 + i * 7));
+            const qreal ry = Hh * (0.23 + 0.19 * jitter(city.col, city.row, 1530 + i * 7));
             const QPointF q = ctr + QPointF(std::cos(a) * d, std::sin(a) * d * 0.8);
             p->drawEllipse(QRectF(q.x() - rx, q.y() - ry, 2 * rx, 2 * ry));
         }
@@ -680,7 +680,7 @@ void drawHaloText(QPainter *p, const QPointF &base, const QString &text,
     p->setFont(f);
     QPainterPath path;
     path.addText(base, f, text);
-    p->setPen(QPen(QColor(255, 253, 247, 240), haloMm, Qt::SolidLine,
+    p->setPen(QPen(QColor(255, 253, 247, 225), haloMm, Qt::SolidLine,
                    Qt::RoundCap, Qt::RoundJoin));
     p->setBrush(Qt::NoBrush);
     p->drawPath(path);
@@ -688,25 +688,64 @@ void drawHaloText(QPainter *p, const QPointF &base, const QString &text,
     p->drawText(base, text);
 }
 
-void drawFlatCitySymbol(QPainter *p, const QPointF &c, const MapCity &city)
+void drawFlatCitySymbol(QPainter *p, const QPointF &c, const MapCity &city,
+                        qreal scale = 1.0)
 {
-    const qreal s = 0.62 + 0.28 * city.size;
-    p->setPen(QPen(QColor(255, 253, 247, 235), 0.42, Qt::SolidLine, Qt::RoundCap));
+    const qreal s = (0.62 + 0.28 * city.size) * scale;
+    // 白色底盘：深色森林 / 建成区上仍能辨识
+    p->setPen(Qt::NoPen);
+    p->setBrush(QColor(255, 253, 247, 238));
+    p->drawEllipse(c, s * 1.32, s * 1.32);
+
     p->setBrush(kFlatInk);
-    p->drawEllipse(c, s, s);
-    if (city.size >= 4) {
+    p->setPen(Qt::NoPen);
+    switch (city.size) {
+    case 1:                                   // 村镇：小实心点
+        p->drawEllipse(c, s * 0.66, s * 0.66);
+        break;
+    case 2:                                   // 小城：实心圆 + 白心
+        p->drawEllipse(c, s * 0.95, s * 0.95);
+        p->setBrush(QColor(255, 253, 247, 248));
+        p->drawEllipse(c, s * 0.30, s * 0.30);
+        break;
+    case 3:                                   // 中城：双环
+        p->setBrush(Qt::NoBrush);
+        p->setPen(QPen(kFlatInk, 0.26 * scale));
+        p->drawEllipse(c, s * 1.00, s * 1.00);
         p->setPen(Qt::NoPen);
-        p->setBrush(QColor(255, 253, 247, 245));
-        p->drawEllipse(c, s * 0.34, s * 0.34);
+        p->setBrush(kFlatInk);
+        p->drawEllipse(c, s * 0.52, s * 0.52);
+        break;
+    case 4: {                                 // 大城市：方框 + 内圆
+        p->setBrush(Qt::NoBrush);
+        p->setPen(QPen(kFlatInk, 0.30 * scale));
+        p->drawRect(QRectF(c.x() - s * 0.95, c.y() - s * 0.95, s * 1.9, s * 1.9));
+        p->setPen(Qt::NoPen);
+        p->setBrush(kFlatInk);
+        p->drawEllipse(c, s * 0.55, s * 0.55);
+        break;
+    }
+    default: {                                // 特大：双框 + 实心心
+        p->setBrush(Qt::NoBrush);
+        p->setPen(QPen(kFlatInk, 0.32 * scale));
+        p->drawRect(QRectF(c.x() - s * 1.05, c.y() - s * 1.05, s * 2.1, s * 2.1));
+        p->setPen(QPen(kFlatInk, 0.18 * scale));
+        p->drawRect(QRectF(c.x() - s * 0.72, c.y() - s * 0.72, s * 1.44, s * 1.44));
+        p->setPen(Qt::NoPen);
+        p->setBrush(kFlatInk);
+        p->drawEllipse(c, s * 0.36, s * 0.36);
+        break;
+    }
     }
     if (city.fortress) {
         p->setBrush(Qt::NoBrush);
-        p->setPen(QPen(kFlatInk, 0.24));
-        p->drawEllipse(c, s * 1.42, s * 1.42);
+        p->setPen(QPen(kFlatInk, 0.22 * scale, Qt::DashLine));
+        p->drawEllipse(c, s * 1.58, s * 1.58);
     }
     if (city.port) {
-        p->setPen(QPen(kFlatInk, 0.20));
-        p->drawLine(c + QPointF(-s * 0.7, s * 1.15), c + QPointF(s * 0.7, s * 1.15));
+        p->setPen(QPen(kFlatInk, 0.22 * scale, Qt::SolidLine, Qt::RoundCap));
+        p->drawLine(c + QPointF(-s * 0.9, s * 1.45), c + QPointF(s * 0.9, s * 1.45));
+        p->drawLine(c + QPointF(0, s * 1.45), c + QPointF(0, s * 1.78));
     }
 }
 
@@ -719,7 +758,7 @@ void paintFlatCities(QPainter *p, const MapSpec &m, const QSizeF &page, bool lab
         if (!m.inside(c.col, c.row)) continue;
         cs << &c;
         const QPointF ctr = hexCenterMm(m, c.col, c.row);
-        const qreal s = 0.62 + 0.28 * c.size;
+        const qreal s = (0.62 + 0.28 * c.size) * 1.32;
         used << QRectF(ctr.x() - s - 0.7, ctr.y() - s - 0.7, 2 * (s + 0.7), 2 * (s + 0.7));
     }
     for (const MapLabel &l : m.labels) {
@@ -755,7 +794,7 @@ void paintFlatCities(QPainter *p, const MapSpec &m, const QSizeF &page, bool lab
         const QPointF ctr = hexCenterMm(m, city.col, city.row);
 
         const qreal nm = 3.25 + 0.83 * city.size;      // 中文字号（mm）
-        const qreal am = 2.05 + 0.22 * city.size;      // 英文字号（mm）
+        const qreal am = 1.95 + 0.20 * city.size;      // 英文字号（mm）
         QFont nf;
         nf.setFamilies(sansFamilies());
         nf.setWeight(QFont::Bold);
@@ -765,7 +804,7 @@ void paintFlatCities(QPainter *p, const MapSpec &m, const QSizeF &page, bool lab
         af.setFamilies(latinSans());
         af.setWeight(QFont::DemiBold);
         af.setPixelSize(qRound(am));
-        af.setLetterSpacing(QFont::PercentageSpacing, 116);
+        af.setLetterSpacing(QFont::PercentageSpacing, 112);
 
         const QString alt = city.nameAlt.toUpper();
         QFontMetricsF fnm(nf), fam(af);
@@ -773,7 +812,7 @@ void paintFlatCities(QPainter *p, const MapSpec &m, const QSizeF &page, bool lab
         const qreal wAlt = alt.isEmpty() ? 0.0 : fam.horizontalAdvance(alt);
         const qreal w = qMax(wName, wAlt);
         const qreal h = nm * 1.02 + (wAlt > 0 ? am * 1.32 : 0.0);
-        const qreal gap = 1.35 + 0.22 * city.size;
+        const qreal gap = 1.55 + 0.22 * city.size;
 
         // 8 个候选方位：右 / 左 / 上 / 下 / 四个对角
         const QPointF cand[8] = {
@@ -802,10 +841,10 @@ void paintFlatCities(QPainter *p, const MapSpec &m, const QSizeF &page, bool lab
         used << best;
 
         const QPointF nameBase(best.left(), best.top() + nm * 0.92);
-        drawHaloText(p, nameBase, city.name, nf, kFlatInk, nm * 0.20);
+        drawHaloText(p, nameBase, city.name, nf, kFlatInk, nm * 0.16);
         if (wAlt > 0) {
             const QPointF altBase(best.left(), best.top() + nm * 1.02 + am * 1.02);
-            drawHaloText(p, altBase, alt, af, kFlatSubInk, am * 0.30);
+            drawHaloText(p, altBase, alt, af, kFlatSubInk, am * 0.22);
         }
     }
 }
@@ -877,9 +916,9 @@ void paintFlatFurniture(QPainter *p, const MapSpec &m, const QSizeF &page, const
     }
 
     if (st.legend) {
-        // 右上：地形图例框
-        const qreal lw = 210.0, lh = 27.0;
-        const QRectF box(inner.right() - lw - 2.0, fx + 3.0, lw, lh);
+        // 右上：地形 / 城镇 / 线路图例框
+        const qreal lw = 236.0, lh = 34.0;
+        const QRectF box(inner.right() - lw - 2.0, fx + 2.0, lw, lh);
         p->setBrush(QColor(0xE8, 0xE4, 0xDA, 238));
         p->setPen(QPen(kFlatInk, 0.34));
         p->drawRect(box);
@@ -890,7 +929,7 @@ void paintFlatFurniture(QPainter *p, const MapSpec &m, const QSizeF &page, const
         p->setFont(hf);
         p->setPen(kFlatInk);
         p->drawText(QPointF(box.left() + 3.0, box.top() + 5.0),
-                    QStringLiteral("地形 / TERRAIN KEY"));
+                    QStringLiteral("地形 / 城镇 / 线路  ·  MAP KEY"));
         p->setPen(QPen(kFlatInk, 0.16));
         p->drawLine(QLineF(box.left() + 2.5, box.top() + 6.4,
                            box.right() - 2.5, box.top() + 6.4));
@@ -905,13 +944,45 @@ void paintFlatFurniture(QPainter *p, const MapSpec &m, const QSizeF &page, const
         lf.setPixelSize(3);
         for (int i = 0; i < 6; ++i) {
             const qreal x = box.left() + 3.0 + (i % 3) * (lw - 6.0) / 3.0;
-            const qreal y = box.top() + 8.0 + (i / 3) * 9.0;
+            const qreal y = box.top() + 8.0 + (i / 3) * 8.0;
             p->setPen(QPen(QColor(0x55, 0x52, 0x4B, 130), 0.14));
             p->setBrush(flatColor(items[i].t));
-            p->drawRect(QRectF(x, y, 9.0, 5.4));
+            p->drawRect(QRectF(x, y, 9.0, 5.0));
             p->setPen(kFlatInk);
             p->setFont(lf);
-            p->drawText(QPointF(x + 11.0, y + 4.4), QString::fromUtf8(items[i].name));
+            p->drawText(QPointF(x + 11.0, y + 4.2), QString::fromUtf8(items[i].name));
+        }
+
+        const qreal ly = box.top() + 25.0;
+        p->setPen(QPen(QColor(0x55, 0x52, 0x4B, 110), 0.12));
+        p->drawLine(QLineF(box.left() + 2.5, ly - 1.2, box.right() - 2.5, ly - 1.2));
+        QFont tiny;
+        tiny.setFamilies(sansFamilies());
+        tiny.setPixelSize(2);
+        const int sizes[3] = {1, 3, 5};
+        static const char *cityNames[3] = {"村镇", "城市", "大城市"};
+        for (int i = 0; i < 3; ++i) {
+            const qreal x = box.left() + 4.0 + i * 38.0;
+            MapCity tmp;
+            tmp.size = sizes[i];
+            drawFlatCitySymbol(p, QPointF(x + 3.2, ly + 3.0), tmp, 1.15);
+            p->setFont(tiny);
+            p->setPen(kFlatInk);
+            p->drawText(QPointF(x + 9.0, ly + 4.4), QString::fromUtf8(cityNames[i]));
+        }
+        struct LineItem { QColor c; qreal w; Qt::PenStyle st; const char *name; };
+        static const LineItem lines[] = {
+            {kFlatRiverEdge, 0.9, Qt::SolidLine, "河流"},
+            {kFlatInk, 0.30, Qt::SolidLine, "铁路/公路"},
+            {kBorder, 0.44, Qt::DashDotLine, "国界"}
+        };
+        for (int i = 0; i < 3; ++i) {
+            const qreal x = box.left() + 126.0 + i * 36.0;
+            p->setPen(QPen(lines[i].c, lines[i].w, lines[i].st, Qt::RoundCap));
+            p->drawLine(QLineF(x, ly + 1.8, x + 11.0, ly + 1.8));
+            p->setFont(tiny);
+            p->setPen(kFlatInk);
+            p->drawText(QPointF(x, ly + 5.4), QString::fromUtf8(lines[i].name));
         }
 
         // 指北针（标题带中部）
@@ -1066,6 +1137,280 @@ void paintFlatFurniture(QPainter *p, const MapSpec &m, const QSizeF &page, const
         p->drawText(QPointF(plate.left() + 5.4, plate.bottom() - 2.2),
                     QStringLiteral("COUNTERFORGE  ·  WTER"));
     }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  独立图例卡：与地图同配色的说明页，可直接作为游戏内帮助面板 / 印刷附页
+// ══════════════════════════════════════════════════════════════════
+void paintMapLegend(QPainter *p, const MapSpec &m)
+{
+    const qreal W = 280.0, H = 190.0;
+    p->setRenderHint(QPainter::Antialiasing, true);
+    p->setRenderHint(QPainter::TextAntialiasing, true);
+
+    QLinearGradient bg(0, 0, W * 0.3, H);
+    bg.setColorAt(0.0, kFlatPaper.lighter(101));
+    bg.setColorAt(1.0, kFlatPaperDeep);
+    p->fillRect(QRectF(0, 0, W, H), bg);
+    p->setBrush(Qt::NoBrush);
+    p->setPen(QPen(kFlatInk, 0.8));
+    p->drawRect(QRectF(2.5, 2.5, W - 5.0, H - 5.0));
+    p->setPen(QPen(kFlatInk, 0.2));
+    p->drawRect(QRectF(4.0, 4.0, W - 8.0, H - 8.0));
+
+    // 深色标题带
+    p->setPen(Qt::NoPen);
+    p->setBrush(QColor(0x2B, 0x29, 0x25));
+    p->drawRect(QRectF(4.0, 4.0, W - 8.0, 24.0));
+    QFont tf;
+    tf.setFamilies(sansFamilies());
+    tf.setWeight(QFont::Bold);
+    tf.setPixelSize(9);
+    tf.setLetterSpacing(QFont::PercentageSpacing, 106);
+    p->setFont(tf);
+    p->setPen(QColor(0xF3, 0xEF, 0xE6));
+    p->drawText(QPointF(10.0, 19.0), QStringLiteral("巴巴罗萨行动 · 地图图例"));
+    QFont sf;
+    sf.setFamilies(latinSans());
+    sf.setPixelSize(3);
+    sf.setWeight(QFont::DemiBold);
+    sf.setLetterSpacing(QFont::PercentageSpacing, 120);
+    p->setFont(sf);
+    p->setPen(QColor(0xD8, 0xC9, 0xA8));
+    p->drawText(QPointF(10.5, 25.0),
+                QStringLiteral("MAP KEY  ·  UNTERNEHMEN BARBAROSSA 1941"));
+    QFont brand;
+    brand.setFamilies(latinSans());
+    brand.setPixelSize(3);
+    p->setFont(brand);
+    p->setPen(QColor(0xC9, 0xC5, 0xBB));
+    p->drawText(QPointF(W - 78.0, 16.0), QStringLiteral("COUNTERFORGE"));
+    p->drawText(QPointF(W - 78.0, 22.0), QStringLiteral("WTER"));
+
+    const qreal cx[3] = {10.0, 100.0, 190.0};
+    const qreal cw = 80.0;
+    auto colTitle = [&](int i, const QString &cn, const QString &en) {
+        QFont f;
+        f.setFamilies(sansFamilies());
+        f.setPixelSize(4);
+        f.setWeight(QFont::Bold);
+        p->setFont(f);
+        p->setPen(kFlatInk);
+        p->drawText(QPointF(cx[i], 37.0), cn);
+        QFont e;
+        e.setFamilies(latinSans());
+        e.setPixelSize(2);
+        p->setFont(e);
+        p->setPen(kFlatSubInk);
+        p->drawText(QPointF(cx[i], 41.0), en);
+        p->setPen(QPen(kFlatInk, 0.22));
+        p->drawLine(QLineF(cx[i], 43.0, cx[i] + cw, 43.0));
+    };
+    colTitle(0, QStringLiteral("地形 TERRAIN"), QStringLiteral("MOVEMENT / DEFENCE"));
+    colTitle(1, QStringLiteral("城镇 SETTLEMENTS"), QStringLiteral("SYMBOLS & LABELS"));
+    colTitle(2, QStringLiteral("线路与网格"), QStringLiteral("RIVERS / RAILS / HEX ID"));
+
+    // ── 栏 1：地形色块 ────────────────────────────────────────────
+    struct TItem { Terrain t; const char *cn; const char *en; const char *eff; };
+    static const TItem tis[] = {
+        {Terrain::Plain,    "平原",   "PLAIN",      "移动 1 · 防御 ×1"},
+        {Terrain::Farm,     "耕地",   "FARMLAND",   "移动 1 · 防御 ×1"},
+        {Terrain::Forest,   "森林",   "FOREST",     "移动 2 · 防御 ×2"},
+        {Terrain::Hills,    "丘陵",   "HILLS",      "移动 2 · 防御 ×2"},
+        {Terrain::Mountain, "山地",   "MOUNTAIN",   "移动 3 · 防御 ×3"},
+        {Terrain::Marsh,    "沼泽",   "MARSH",      "移动 3 · 防御 ×1"},
+        {Terrain::Water,    "水域",   "WATER",      "不可通行 · 渡河需判定"},
+        {Terrain::Urban,    "建成区", "BUILT-UP",   "大城市周边 · 防御 ×2"}
+    };
+    for (int i = 0; i < 8; ++i) {
+        const qreal y = 48.0 + i * 15.2;
+        p->setPen(QPen(QColor(0x55, 0x52, 0x4B, 140), 0.18));
+        p->setBrush(flatColor(tis[i].t));
+        p->drawRect(QRectF(cx[0], y, 13.0, 8.0));
+        QFont f;
+        f.setFamilies(sansFamilies());
+        f.setPixelSize(3);
+        f.setWeight(QFont::DemiBold);
+        p->setFont(f);
+        p->setPen(kFlatInk);
+        p->drawText(QPointF(cx[0] + 16.0, y + 3.6), QString::fromUtf8(tis[i].cn));
+        QFont e;
+        e.setFamilies(latinSans());
+        e.setPixelSize(2);
+        p->setFont(e);
+        p->setPen(kFlatSubInk);
+        p->drawText(QPointF(cx[0] + 16.0, y + 6.8), QString::fromUtf8(tis[i].en));
+        QFont n;
+        n.setFamilies(sansFamilies());
+        n.setPixelSize(2);
+        p->setFont(n);
+        p->drawText(QPointF(cx[0], y + 12.2), QString::fromUtf8(tis[i].eff));
+    }
+
+    // ── 栏 2：城镇符号与标注 ──────────────────────────────────────
+    struct CItem { int size; bool port; bool fortress; const char *cn; const char *desc; };
+    static const CItem cis[] = {
+        {1, false, false, "村镇",     "小实心点"},
+        {2, false, false, "小城",     "实心圆 + 白心"},
+        {3, false, false, "中等城市", "双环 + 实心心"},
+        {4, false, false, "大城市",   "方框 + 内圆"},
+        {5, false, false, "特大城市", "双框 + 实心心"},
+        {3, true,  false, "港口",     "符号下方锚记"},
+        {3, false, true,  "要塞",     "外围虚线圈"}
+    };
+    for (int i = 0; i < 7; ++i) {
+        const qreal y = 48.0 + i * 14.0;
+        MapCity tmp;
+        tmp.size = cis[i].size;
+        tmp.port = cis[i].port;
+        tmp.fortress = cis[i].fortress;
+        drawFlatCitySymbol(p, QPointF(cx[1] + 5.0, y + 3.5), tmp, 1.35);
+        QFont f;
+        f.setFamilies(sansFamilies());
+        f.setPixelSize(3);
+        f.setWeight(QFont::DemiBold);
+        p->setFont(f);
+        p->setPen(kFlatInk);
+        p->drawText(QPointF(cx[1] + 15.0, y + 3.8), QString::fromUtf8(cis[i].cn));
+        QFont d;
+        d.setFamilies(sansFamilies());
+        d.setPixelSize(2);
+        p->setFont(d);
+        p->setPen(kFlatSubInk);
+        p->drawText(QPointF(cx[1] + 15.0, y + 7.2), QString::fromUtf8(cis[i].desc));
+    }
+    // 深色地形上的中英双行标注示例
+    p->setPen(Qt::NoPen);
+    p->setBrush(kFlatForest);
+    p->drawRect(QRectF(cx[1], 146.0, cw, 22.0));
+    QFont exCn;
+    exCn.setFamilies(sansFamilies());
+    exCn.setPixelSize(5);
+    exCn.setWeight(QFont::Bold);
+    QFont exEn;
+    exEn.setFamilies(latinSans());
+    exEn.setPixelSize(2);
+    exEn.setWeight(QFont::DemiBold);
+    drawHaloText(p, QPointF(cx[1] + 3.0, 154.0), QStringLiteral("明斯克"),
+                 exCn, kFlatInk, 0.85);
+    drawHaloText(p, QPointF(cx[1] + 3.0, 159.5), QStringLiteral("MINSK"),
+                 exEn, kFlatSubInk, 0.45);
+    QFont hint;
+    hint.setFamilies(sansFamilies());
+    hint.setPixelSize(2);
+    p->setFont(hint);
+    p->setPen(kFlatSubInk);
+    p->drawText(QPointF(cx[1], 174.0), QStringLiteral("中文 + 拉丁转写，白晕边保证可读"));
+
+    // ── 栏 3：线状要素 / 格号 / 比例尺 ────────────────────────────
+    static const char *ln[5] = {"主干河流", "支流", "铁路", "公路", "国界 / 战线"};
+    static const char *ld[5] = {
+        "宽灰蓝双线 · 渡河修正", "细灰蓝双线 · 渡河修正",
+        "黑线 + 枕木 · 补给线", "黑色细实线 · 机动", "红色点划线 · 1941 战线"
+    };
+    for (int i = 0; i < 5; ++i) {
+        const qreal y = 48.0 + i * 14.0;
+        const qreal x0 = cx[2], x1 = cx[2] + 24.0, ly = y + 3.0;
+        p->setBrush(Qt::NoBrush);
+        switch (i) {
+        case 0:
+            p->setPen(QPen(kFlatRiverEdge, 1.7, Qt::SolidLine, Qt::RoundCap));
+            p->drawLine(QLineF(x0, ly, x1, ly));
+            p->setPen(QPen(kFlatRiverFill, 1.05, Qt::SolidLine, Qt::RoundCap));
+            p->drawLine(QLineF(x0, ly, x1, ly));
+            break;
+        case 1:
+            p->setPen(QPen(kFlatRiverEdge, 0.95, Qt::SolidLine, Qt::RoundCap));
+            p->drawLine(QLineF(x0, ly, x1, ly));
+            p->setPen(QPen(kFlatRiverFill, 0.58, Qt::SolidLine, Qt::RoundCap));
+            p->drawLine(QLineF(x0, ly, x1, ly));
+            break;
+        case 2:
+            p->setPen(QPen(kFlatInk, 0.55, Qt::SolidLine, Qt::RoundCap));
+            p->drawLine(QLineF(x0, ly, x1, ly));
+            p->setPen(QPen(kFlatInk, 0.30));
+            for (qreal t = 2.0; t < x1 - x0; t += 4.0)
+                p->drawLine(QLineF(x0 + t, ly - 1.2, x0 + t, ly + 1.2));
+            break;
+        case 3:
+            p->setPen(QPen(kFlatInk, 0.60, Qt::SolidLine, Qt::RoundCap));
+            p->drawLine(QLineF(x0, ly, x1, ly));
+            break;
+        default:
+            p->setPen(QPen(kBorder, 0.75, Qt::DashDotLine, Qt::FlatCap));
+            p->drawLine(QLineF(x0, ly, x1, ly));
+            break;
+        }
+        QFont f;
+        f.setFamilies(sansFamilies());
+        f.setPixelSize(3);
+        f.setWeight(QFont::DemiBold);
+        p->setFont(f);
+        p->setPen(kFlatInk);
+        p->drawText(QPointF(cx[2] + 28.0, y + 3.8), QString::fromUtf8(ln[i]));
+        QFont d;
+        d.setFamilies(sansFamilies());
+        d.setPixelSize(2);
+        p->setFont(d);
+        p->setPen(kFlatSubInk);
+        p->drawText(QPointF(cx[2], y + 8.0), QString::fromUtf8(ld[i]));
+    }
+
+    QFont hf;
+    hf.setFamilies(sansFamilies());
+    hf.setPixelSize(2);
+    p->setFont(hf);
+    p->setPen(kFlatInk);
+    p->drawText(QPointF(cx[2], 122.0), QStringLiteral("六角格与格号 HEX ID"));
+    const qreal hr = 6.0, hh = hr * kSqrt3;
+    for (int j = 0; j < 2; ++j) {
+        const QPointF hc(cx[2] + 8.0 + j * 9.0, 136.0 + (j ? hh * 0.5 : 0.0));
+        p->setPen(QPen(kFlatGrid, 0.25));
+        p->setBrush(Qt::NoBrush);
+        p->drawPath(hexPath(hc, hr, hh));
+        QFont nf;
+        nf.setFamilies(latinSans());
+        nf.setPixelSize(2);
+        p->setFont(nf);
+        p->setPen(kFlatSubInk);
+        p->drawText(QRectF(hc.x() - 5.0, hc.y() + 1.0, 10.0, 3.0),
+                    Qt::AlignHCenter, j ? QStringLiteral("0202") : QStringLiteral("0102"));
+    }
+    p->setFont(hf);
+    p->setPen(kFlatSubInk);
+    p->drawText(QPointF(cx[2] + 30.0, 138.0), QStringLiteral("前两位 = 列"));
+    p->drawText(QPointF(cx[2] + 30.0, 142.0), QStringLiteral("后两位 = 行"));
+
+    p->setFont(hf);
+    p->setPen(kFlatInk);
+    p->drawText(QPointF(cx[2], 152.0), QStringLiteral("比例尺 SCALE"));
+    const qreal seg = 16.0;
+    for (int i = 0; i < 4; ++i) {
+        p->setPen(QPen(kFlatInk, 0.20));
+        p->setBrush(i % 2 ? Qt::NoBrush : QBrush(kFlatInk));
+        p->drawRect(QRectF(cx[2] + i * seg, 155.0, seg, 2.4));
+    }
+    p->setBrush(Qt::NoBrush);
+    p->setFont(hf);
+    p->setPen(kFlatSubInk);
+    for (int i = 0; i <= 4; ++i)
+        p->drawText(QRectF(cx[2] + i * seg - 5.0, 158.5, 10.0, 3.0), Qt::AlignHCenter,
+                    QString::number(qRound(i * m.kmPerHex / 10.0) * 10));
+    p->drawText(QPointF(cx[2] + 68.0, 161.0), QStringLiteral("km"));
+
+    // 页脚
+    p->setPen(QPen(kFlatInk, 0.22));
+    p->drawLine(QLineF(10.0, 176.0, W - 10.0, 176.0));
+    QFont foot;
+    foot.setFamilies(sansFamilies());
+    foot.setPixelSize(2);
+    p->setFont(foot);
+    p->setPen(kFlatSubInk);
+    p->drawText(QPointF(10.0, 182.0),
+                QStringLiteral("格距 %1 mm  ·  1 格 ≈ %2 km  ·  地形以格心为准  ·  数据与主图一致")
+                    .arg(m.hexMm, 0, 'f', 0).arg(m.kmPerHex, 0, 'f', 1));
+    p->drawText(QRectF(W - 92.0, 178.0, 82.0, 5.0), Qt::AlignRight | Qt::AlignVCenter,
+                QStringLiteral("COUNTERFORGE · WTER"));
 }
 
 } // namespace
@@ -1560,6 +1905,23 @@ QImage mapImage(const MapSpec &m, int dpi, const MapStyle &st)
     QPainter p(&img);
     p.scale(pxPerMm, pxPerMm);      // 之后一律按毫米画
     paintMap(&p, m, st);
+    p.end();
+    return img;
+}
+
+QImage mapLegendImage(const MapSpec &m, int dpi)
+{
+    const QSizeF mm(280.0, 190.0);
+    const qreal pxPerMm = dpi / 25.4;
+    const int w = int(std::lround(mm.width() * pxPerMm));
+    const int h = int(std::lround(mm.height() * pxPerMm));
+
+    QImage img(w, h, QImage::Format_ARGB32_Premultiplied);
+    img.fill(Qt::white);
+
+    QPainter p(&img);
+    p.scale(pxPerMm, pxPerMm);
+    paintMapLegend(&p, m);
     p.end();
     return img;
 }

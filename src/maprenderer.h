@@ -30,6 +30,9 @@ void paintMap(QPainter *p, const MapSpec &m, const MapStyle &st = MapStyle());
 // 渲染成位图（dpi 决定像素）
 QImage mapImage(const MapSpec &m, int dpi, const MapStyle &st = MapStyle());
 
+// 独立图例卡（280 × 190 mm，配色、符号与主图一致，适合游戏内帮助面板）
+QImage mapLegendImage(const MapSpec &m, int dpi);
+
 // 单格几何：返回格心（毫米，相对页面左上角）
 QPointF hexCenterMm(const MapSpec &m, int col, int row);
 qreal   hexRadiusMm(const MapSpec &m);   // 外接圆半径 R

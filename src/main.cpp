@@ -96,6 +96,41 @@ int main(int argc, char *argv[])
     if (args.contains(QStringLiteral("--json")) || args.contains(QStringLiteral("--schema")))
         return cf::runJsonApi(args);
 
+    // ── 独立图例卡：--maplegend 数据.json [--mapout 输出.png] [--dpi 200]
+    if (args.contains(QStringLiteral("--maplegend"))) {
+        const QString specPath = argValue(QStringLiteral("--maplegend"), QString());
+        QFile f(specPath);
+        if (!f.open(QIODevice::ReadOnly)) {
+            fprintf(stderr, "打不开地图数据：%s\n", qPrintable(specPath));
+            return 2;
+        }
+        QJsonParseError perr{};
+        const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &perr);
+        if (doc.isNull()) {
+            fprintf(stderr, "地图 JSON 解析失败：%s\n", qPrintable(perr.errorString()));
+            return 2;
+        }
+        const cf::MapSpec m = cf::MapSpec::fromJson(doc.object());
+        if (!m.isValid()) {
+            fprintf(stderr, "地图数据不完整（cols/rows/terrain）\n");
+            return 2;
+        }
+        const int dpi = qBound(72, argValue(QStringLiteral("--dpi"), QStringLiteral("200")).toInt(), 600);
+        QString out = argValue(QStringLiteral("--mapout"), QString());
+        if (out.isEmpty()) out = QFileInfo(specPath).absolutePath() + QLatin1Char('/')
+                                 + QStringLiteral("地图图例.png");
+        QImage img = cf::mapLegendImage(m, dpi);
+        const int previewW = argValue(QStringLiteral("--mapwidth"), QStringLiteral("0")).toInt();
+        if (previewW > 0 && previewW < img.width())
+            img = img.scaledToWidth(previewW, Qt::SmoothTransformation);
+        if (!img.save(out)) {
+            fprintf(stderr, "写入失败：%s\n", qPrintable(out));
+            return 2;
+        }
+        printf("%s  %dx%d px\n", qPrintable(out), img.width(), img.height());
+        return 0;
+    }
+
     // ── 地图：渲染一张战区图（--map 数据.json [--mapout 输出.png] [--dpi 300]）
     if (args.contains(QStringLiteral("--map"))) {
         const QString specPath = argValue(QStringLiteral("--map"), QString());
