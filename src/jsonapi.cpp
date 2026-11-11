@@ -47,11 +47,21 @@ void ensureStdio()
 
 void printJson(const QJsonObject &o)
 {
+    QByteArray s = QJsonDocument(o).toJson(QJsonDocument::Compact);
+    s.append('\n');
+
+#ifdef Q_OS_WIN
+    // 直接写句柄：GUI 子系统下 CRT 的 stdout 未必挂在管道上，WriteFile 才稳
     ensureStdio();
-    const QByteArray s = QJsonDocument(o).toJson(QJsonDocument::Compact);
+    HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (h == nullptr || h == INVALID_HANDLE_VALUE) return;
+    DWORD written = 0;
+    WriteFile(h, s.constData(), DWORD(s.size()), &written, nullptr);
+    FlushFileBuffers(h);
+#else
     fwrite(s.constData(), 1, size_t(s.size()), stdout);
-    fputc('\n', stdout);
     fflush(stdout);
+#endif
 }
 
 [[noreturn]] void fail(const QString &message, const QString &path = QString())
