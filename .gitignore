@@ -18,6 +18,7 @@ _mixed.json
 # 地图成品图体积大，可随时由 maps/*.json 重新渲染（保留预览图除外）
 maps/*.png
 !maps/preview.png
+!maps/preview-*.png
 
 # 编辑器 / 系统
 .vs/

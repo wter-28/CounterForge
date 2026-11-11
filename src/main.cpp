@@ -121,8 +121,23 @@ int main(int argc, char *argv[])
                                  + QFileInfo(specPath).completeBaseName() + QStringLiteral(".png");
         cf::MapStyle st;
         const QString styleArg = argValue(QStringLiteral("--mapstyle"), QString());
+        // 默认 flat（平铺色块）；另有 classic（旧式逐格纹理）与 satellite（卫星地形）
         st.satellite = (styleArg == QLatin1String("satellite"));
+        st.classic = (styleArg == QLatin1String("classic"));
         QImage img = cf::mapImage(m, dpi, st);
+        // --mapcrop x,y,w,h（像素）可导出局部大图，便于检查地名与细节
+        const QString cropArg = argValue(QStringLiteral("--mapcrop"), QString());
+        if (!cropArg.isEmpty()) {
+            const QStringList v = cropArg.split(QLatin1Char(','));
+            if (v.size() == 4) {
+                const QRect rc(v.at(0).toInt(), v.at(1).toInt(),
+                               v.at(2).toInt(), v.at(3).toInt());
+                img = img.copy(rc.intersected(img.rect()));
+            }
+        }
+        const int previewW = argValue(QStringLiteral("--mapwidth"), QStringLiteral("0")).toInt();
+        if (previewW > 0 && previewW < img.width())
+            img = img.scaledToWidth(previewW, Qt::SmoothTransformation);
         if (!img.save(out)) {
             fprintf(stderr, "写入失败：%s\n", qPrintable(out));
             return 2;

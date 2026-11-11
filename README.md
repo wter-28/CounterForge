@@ -10,20 +10,34 @@
 
 ### 巴巴罗萨行动 · 全线战场 + 三张战区图
 
-`--map` 模式可从纯 JSON 数据渲染地形图（六角格 + 山体阴影 + 水域深浅 + 河流/铁路/城市）。整图一张 A0 装下全线（波罗的海 — 黑海，东普鲁士 — 莫斯科），也可拆成三张战区图。
+`--map` 模式从纯 JSON 数据出图：**一张 A0 整图装下全线**（波罗的海 — 黑海，东普鲁士 — 莫斯科）。默认 `flat` 风格是实体兵棋地图的平铺色块观感：冷灰米纸底、清晰的六角格与格号、连片的深灰绿森林 / 灰褐山地 / 蓝灰水面、细黑交通线与灰蓝河流，以及带白晕边的**中文 + 拉丁转写双行城市名**。四边还有行列号、标题带、地形图例、12 回合记录轨、地形效果表和深色标题牌。
 
-![巴巴罗萨地图](maps/preview.png)
+![巴巴罗萨全线地图](maps/preview.png)
 
-- **全线战场**（A0）：波罗的海 — 黑海 · 东普鲁士 — 莫斯科，58×68 格
+**城市标注细节**（1:1 局部）：
+
+![城市标注局部](maps/preview-cities.png)
+
+![南部地形局部](maps/preview-south.png)
+
+- **全线战场**（A0，836 × 1186 mm）：58 × 68 格、16 mm 格距、68 座带标注的城市
 - 北方集团军群：东普鲁士 — 列宁格勒（波罗的海、芬兰湾、拉多加湖）
 - 中央集团军群：布格河 — 斯摩棱斯克（普里皮亚季沼泽、第聂伯河上游）
 - 南方集团军群：加利西亚 — 基辅 — 黑海（喀尔巴阡山、第聂伯河、克里木）
 
-数据见 `maps/*.json`，改坐标/地形后一条命令重出：
+地形数据在 `tools/gen_barbarossa.py` 里按经纬度栅格化后做了**邻域连片化**（多数投票 + 孤立单格清理），所以色块是成片的地形区，不会是逐格跳变的散点。改坐标 / 地形后一条命令重出：
 
 ```bat
+:: 默认 flat：平铺色块 + 有机地形块 + 中英双行城市标注
 CounterForge.exe --map maps/巴巴罗萨-全线.json --mapout 全线战场.png --dpi 300
-CounterForge.exe --map maps/巴巴罗萨-中央.json --mapout 成品.png --dpi 300
+
+:: 可选：classic 旧式逐格纹理 / satellite 程序化卫星地形
+CounterForge.exe --map maps/巴巴罗萨-全线.json --mapstyle classic   --mapout classic.png   --dpi 300
+CounterForge.exe --map maps/巴巴罗萨-全线.json --mapstyle satellite --mapout satellite.png --dpi 300
+
+:: 局部 1:1 检查（像素裁切）与快速预览（等比缩到指定宽度）
+CounterForge.exe --map maps/巴巴罗萨-全线.json --dpi 100 --mapcrop 380,1850,1120,1350 --mapout 局部.png
+CounterForge.exe --map maps/巴巴罗萨-全线.json --dpi 72 --mapwidth 1100 --mapout preview.png
 ```
 
 ---
@@ -223,13 +237,13 @@ CounterForge/
 │  ├─ counterrenderer.h/.cpp 绘制引擎（版面、北约符号、规模、数值、拼版）
 │  ├─ jsonapi.h/.cpp        JSON 接口（--json / --schema）
 │  ├─ mapspec.h/.cpp        地图数据模型（六角格、地形、河流/铁路、城市）
-│  ├─ maprenderer.h/.cpp    地图渲染（老纸纹理、晕滃、河流、图廓、图例）
+│  ├─ maprenderer.h/.cpp    地图渲染（平铺色块 / 经典 / 卫星三种风格、城市标注避让、四边版式）
 │  ├─ widgets.h/.cpp        预览画布、算子库列表委托
 │  ├─ legenddialog.h/.cpp   符号图例
 │  └─ mainwindow.h/.cpp     主界面、项目管理、导出
 ├─ examples/                JSON 接口示例 spec
-├─ maps/                    巴巴罗萨三战区数据（*.json）+ 预览图
-├─ tools/gen_barbarossa.py  战区数据生成脚本（经纬度 → 六角格栅格化）
+├─ maps/                    全线 + 三战区数据（*.json）与预览图
+├─ tools/gen_barbarossa.py  地图数据生成脚本（经纬度 → 栅格化 → 地形连片化）
 ├─ dist/                    已打包的可运行程序 + 示例项目
 ├─ docs/                    截图与输出示例
 ├─ CMakeLists.txt

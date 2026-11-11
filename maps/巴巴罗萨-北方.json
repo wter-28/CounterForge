@@ -13,24 +13,24 @@
  "kmPerHex": 45.6,
  "paper": "A2",
  "terrain": [
-  "m~m~f~.~f~.~f~f~f~.~f~f~f~f~ffffffff",
-  "ffff~~~~~~~~~~~~~~~~~~~~~~~~~~ffffff",
-  "mfff..~~~~~~~~~~~~~~~~~~~~~~~~mfmff.",
-  "fff...ff~~~~~~~~~~~~~~~~~~~~~~fffff.",
-  "f..mfff~m~~~~~~~~~~~~~~~~~~~~fff.m..",
-  "mff.ffff~f~.~~~~~~~~~~~~~~~~~.....ff",
-  "..mmffff.f..ffff~f~.~.~f~ffffff.ffff",
-  "fffffffm..ffffffff.~ffffffffffmfffff",
-  "ffffmf...fffffff..~~.fffffm..fffffff",
-  "fffff.f.ffffff.fff~ffmff..~~fffffff.",
-  "fff.ff.f~~~ffff.ffffffff...ffffff.fh",
-  "fmf..fff~~~f....ffffffmmf.fffff~fhhh",
-  ".f..fffm~f~.m.ffffff.ffm.fffff~fhfhf",
-  "f..fffffffffffffffffm...fffffm..mfff",
-  ".f.fffffff..mfmffffm..ffffffff.mffff",
-  ".fffffffm.fffffff...ffffffff.f.fffff",
-  "ffffff..fffffffff...fffffffff.ffffff",
-  "ffff.h..fffffffff.mfffff..mhffffffff"
+  "f~f~f~f~f~f~f~.~.~f~f~f~f~f~ff......",
+  "ffff~~~~~~~~~~~~~~~~~~~~~~~~~~......",
+  "ffffff~~~~~~~~~~~~~~~~~~~~~~~~......",
+  "ffffffff~~~~~~~~~~~~~~~~~~~~~~.fffff",
+  "fffffff~f~~~~~~~~~~~~~~~~~~~~..fffff",
+  "ffffffff~.~.~~~~~~~~~~~~~~~~~..fffff",
+  "ffffffff.....fff~f~f~f~f~ff....fffff",
+  "ffffffffff...ffffff~fffff......fffff",
+  "fffff.ffffffffffff~~f..........fffff",
+  "ffff....ffffffffff~ff.....~~.fffffff",
+  "fff.....~~~ffffffffff......ffffffffh",
+  "fff.....~~~fffffffffff....fffff~fhhh",
+  "f.......~f~fffffffffff....ffff~ffhhh",
+  ".......fffffffffffffff...fffffffffhf",
+  ".....ffffffffffffff......fffffffffff",
+  "....fffffffffffff.......ffffffffffff",
+  "....fffffffffffff......ffffffffffff.",
+  "....fffffffffffff.....fffffffffffff."
  ],
  "rivers": [
   [
@@ -1435,6 +1435,38 @@
    "size": 5,
    "port": true,
    "fortress": true
+  },
+  {
+   "name": "波洛茨克",
+   "alt": "POLOTZK",
+   "col": 20,
+   "row": 16,
+   "size": 2,
+   "fortress": true
+  },
+  {
+   "name": "旧鲁萨",
+   "alt": "STARAYA RUSSA",
+   "col": 27,
+   "row": 9,
+   "size": 2
+  },
+  {
+   "name": "维堡",
+   "alt": "WYBORG",
+   "col": 21,
+   "row": 3,
+   "size": 2,
+   "port": true,
+   "fortress": true
+  },
+  {
+   "name": "赫尔辛基",
+   "alt": "HELSINKI",
+   "col": 12,
+   "row": 4,
+   "size": 3,
+   "port": true
   }
  ],
  "labels": [

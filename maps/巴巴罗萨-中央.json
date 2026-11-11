@@ -13,24 +13,24 @@
  "kmPerHex": 33.3,
  "paper": "A2",
  "terrain": [
-  "mfmfff.ff..fffffff.ffffffffmffffffff",
-  "ffffff...fmfffffff.fffffff.fffffffff",
-  "mfff...fffffff...ffffffff..fffmfmff.",
-  "f.f..hffffffffff.ffmfffffffffff.fffh",
-  "f.hmffffmffffmhfffff.h.hh.fffffhhm..",
-  "mffhfffffffh..ffffmf.hh.fffff...hhff",
-  "hhmmffffh.hh.fffffhh.hfffffffff...ff",
-  "fffffffmhhf.ffff..hhffffff.fffmfffff",
-  "ffffmfh.hfffffffhh...fffffmhh.ffffff",
-  "fff..fm...fff...mm.ffmff....mffffff.",
-  "ff..mff.fmfff.m....fff.....fffff....",
-  ".m...ffffff......fffffmm...fffff....",
-  ".m....fmfff.m...fff...mm.fffff.m.hhh",
-  "...,f,f,fmmmmmmmf,f,m....,f,.m..mhhh",
-  "...,,,,mmmmmmmmmmmmm..,,,,,,...m.hhh",
-  ".,,,,,..mmmmmmmmmmmmmm,,,,.,...,,,,,",
-  ",,,,.....,m,m,mmmmmmmm,,,,.....,,,,,",
-  ",,,,...,.,,,,,,..,m,,,,,.,m.,,,,,,.."
+  "ffffffffffffff...fffffffffffff......",
+  "fffffffffffff.....fffffffffff.......",
+  "fffffffffffff.....fffffffff.........",
+  "fffffff.fffff....fffffffff.......f.f",
+  "fffffff..ffff..fffffffffff.hhh..ffff",
+  "fffffff..ffh..ffffffffffffhhhh.hffff",
+  "fffff.....hh.ffffffffffff..hhhhhffff",
+  "fffff........ffffffffff....hhhhhffff",
+  "fff..........ffffffff.......hhhfffff",
+  "fff...........ffffff..mmmm...fffffff",
+  "f...mmmm.....fffffff..mmmm...fffffff",
+  "....mmmm...fffffffff...mm...fffffffh",
+  "....mmmm..fffffffff........ffffffhhh",
+  ".....mmmmmmmmmmmmm.........,f,f,hhhh",
+  ".....,mmmmmmmmmmmmmm.......,,,,,hhhh",
+  "....,,,,mmmmmmmmmmmmmm...,,,,,,,,,hh",
+  "....,,,,,,m,m,mmmmmmmm.,,,,,,,,,,,,,",
+  "....,,,,,,,,,,,mmmmmmm.,,,,,,,,,,,,,"
  ],
  "rivers": [
   [
@@ -3033,6 +3033,64 @@
    "name": "罗夫诺",
    "alt": "ROWNО",
    "col": 11,
+   "row": 17,
+   "size": 2
+  },
+  {
+   "name": "格罗德诺",
+   "alt": "GRODNO",
+   "col": 6,
+   "row": 8,
+   "size": 2,
+   "fortress": true
+  },
+  {
+   "name": "巴拉诺维奇",
+   "alt": "BARANOWITSCHI",
+   "col": 11,
+   "row": 9,
+   "size": 2
+  },
+  {
+   "name": "平斯克",
+   "alt": "PINSK",
+   "col": 11,
+   "row": 12,
+   "size": 2
+  },
+  {
+   "name": "科韦利",
+   "alt": "KOWEL",
+   "col": 8,
+   "row": 16,
+   "size": 2
+  },
+  {
+   "name": "卢茨克",
+   "alt": "LUZK",
+   "col": 9,
+   "row": 17,
+   "size": 2
+  },
+  {
+   "name": "波洛茨克",
+   "alt": "POLOTZK",
+   "col": 17,
+   "row": 1,
+   "size": 2,
+   "fortress": true
+  },
+  {
+   "name": "库尔斯克",
+   "alt": "KURSK",
+   "col": 35,
+   "row": 14,
+   "size": 3
+  },
+  {
+   "name": "苏梅",
+   "alt": "SUMY",
+   "col": 32,
    "row": 17,
    "size": 2
   }

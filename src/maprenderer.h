@@ -18,6 +18,7 @@ struct MapStyle {
     bool legend = true;      // 图例与比例尺
     bool frame = true;       // 图廓与接图表
     bool satellite = false;  // 卫星地形风（程序化高程 + 山体阴影 + 冠层/水域渐变）
+    bool classic = false;    // 旧式逐格纹理地形（默认关闭；默认为平铺色块风）
 };
 
 // 版面尺寸（毫米）

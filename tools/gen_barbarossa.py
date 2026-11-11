@@ -329,6 +329,27 @@ CITIES = [
     ("莫斯科", "MOSKAU", 37.62, 55.75, 5, False, True),
     ("加里宁", "KALININ", 35.90, 56.86, 3, False, False),
     ("列宁格勒", "LENINGRAD", 30.32, 59.94, 5, True, True),
+    # 补充城镇：让波兰、白俄罗斯、乌克兰与俄罗斯中部都有可读的地名
+    ("格罗德诺", "GRODNO", 23.83, 53.68, 2, False, True),
+    ("巴拉诺维奇", "BARANOWITSCHI", 26.02, 53.13, 2, False, False),
+    ("平斯克", "PINSK", 26.10, 52.12, 2, False, False),
+    ("科韦利", "KOWEL", 24.71, 51.22, 2, False, False),
+    ("卢茨克", "LUZK", 25.33, 50.75, 2, False, False),
+    ("波洛茨克", "POLOTZK", 28.60, 55.50, 2, False, True),
+    ("旧鲁萨", "STARAYA RUSSA", 31.36, 57.99, 2, False, False),
+    ("维堡", "WYBORG", 28.75, 60.71, 2, True, True),
+    ("赫尔辛基", "HELSINKI", 24.94, 60.17, 3, True, False),
+    ("图拉", "TULA", 37.62, 54.20, 3, False, False),
+    ("卡卢加", "KALUGA", 36.27, 54.51, 2, False, False),
+    ("库尔斯克", "KURSK", 36.19, 51.73, 3, False, False),
+    ("别尔哥罗德", "BELGOROD", 36.59, 50.60, 2, False, False),
+    ("苏梅", "SUMY", 34.80, 50.91, 2, False, False),
+    ("切尔卡瑟", "TSCHERKASSY", 32.06, 49.44, 2, False, False),
+    ("克列缅丘格", "KREMENTSCHUG", 33.42, 49.07, 2, False, False),
+    ("赫尔松", "CHERSON", 32.62, 46.64, 2, True, False),
+    ("切尔诺夫策", "TSCHERNOWITZ", 25.94, 48.29, 2, False, False),
+    ("热舒夫", "RESCHOW", 22.00, 50.04, 2, False, False),
+    ("罗兹", "LODZ", 19.46, 51.76, 3, False, False),
 ]
 
 THEATERS = [
@@ -424,6 +445,49 @@ THEATERS = [
 ]
 
 
+def smooth_terrain(terrain, cols, rows, passes=2):
+    """邻域多数投票：把逐格椒盐噪声合并成连片的地形区。
+
+    水域固定不动（保护海岸线与大湖轮廓），山地 / 丘陵 / 沼泽带加权保留；
+    平票时倾向保留原地形，避免边界整体漂移。
+    """
+    weight = {"^": 2.4, "h": 2.0, "m": 1.5}
+    for _ in range(passes):
+        out = [row[:] for row in terrain]
+        for r in range(rows):
+            for c in range(cols):
+                cur = terrain[r][c]
+                if cur == "~":
+                    continue
+                score = {cur: 1.6}
+                for e in range(6):
+                    nc, nr = neighbor(c, r, e)
+                    if not (0 <= nc < cols and 0 <= nr < rows):
+                        continue
+                    t = terrain[nr][nc]
+                    if t == "~":
+                        continue
+                    score[t] = score.get(t, 0.0) + weight.get(t, 1.0)
+                out[r][c] = max(score, key=lambda k: (score[k], k == cur))
+        terrain = out
+
+    # 清掉完全孤立的单格（六个邻居都不是同类），避免地图上出现零散色点
+    out = [row[:] for row in terrain]
+    for r in range(rows):
+        for c in range(cols):
+            cur = terrain[r][c]
+            if cur == "~":
+                continue
+            nbrs = []
+            for e in range(6):
+                nc, nr = neighbor(c, r, e)
+                if 0 <= nc < cols and 0 <= nr < rows and terrain[nr][nc] != "~":
+                    nbrs.append(terrain[nr][nc])
+            if nbrs and cur not in nbrs:
+                out[r][c] = max(set(nbrs), key=nbrs.count)
+    return out
+
+
 def build(theater):
     global COLS, ROWS, R, HEX_MM, COL_PITCH, MARGIN, TITLE, LEGEND
     # 每张图可用自己的格数 / 格距 / 纸张（默认沿用模块常量）
@@ -460,22 +524,27 @@ def build(theater):
             elif any_poly(lon, lat, FORESTS):
                 t = "f"
             else:
-                # 用低频噪声做成片分布：北部森林带、南部耕地/草原、中部混合
+                # 低频连续场决定大片区：北部森林带、中部混合、南部耕地草原。
+                # 高频项只做很小的阈值扰动，避免逐格跳变形成椒盐状散点。
                 h = (math.sin(c * 12.9898 + r * 78.233) * 43758.5453) % 1.0
-                n = (math.sin(c * 0.62 + r * 0.81) + math.sin(c * 1.7 - r * 1.3) * 0.5) * 0.5 + 0.5
+                n = (math.sin(c * 0.34 + r * 0.27)
+                     + math.sin(c * 0.71 - r * 0.53) * 0.45
+                     + math.sin(c * 0.13 + r * 0.91) * 0.30) / 1.75
+                n = n * 0.5 + 0.5 + (h - 0.5) * 0.05
                 if lat > 55.0:
-                    t = "f" if (n > 0.34 or h < 0.45) else "."
+                    t = "f" if n > 0.36 else "."
                 elif lat > 53.4:
-                    t = "f" if (n > 0.48 or h < 0.38) else ("h" if n < 0.20 else ".")
+                    t = "f" if n > 0.46 else ("h" if n < 0.22 else ".")
                 elif lat > 52.0:
-                    t = "f" if n > 0.60 else ("m" if n < 0.16 and h < 0.4 else ".")
+                    t = "f" if n > 0.58 else ("m" if n < 0.20 else ".")
                 elif lat > 50.9:
-                    t = "," if n > 0.40 else ("f" if n > 0.78 else ".")
+                    t = "," if n > 0.38 else ("f" if n > 0.72 else ".")
                 else:
-                    t = "," if n > 0.22 else "."
-                if h < 0.06:
-                    t = "m"
+                    t = "," if n > 0.30 else "."
             terrain[r][c] = t
+
+    # 连片化：顺带把手工多边形边界的锯齿也抹顺
+    terrain = smooth_terrain(terrain, COLS, ROWS, passes=2)
 
     major_store = {}
     for name, (cls, line) in RIVERS.items():
