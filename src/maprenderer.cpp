@@ -62,6 +62,113 @@ qreal jitter(int c, int r, int salt)
     return qreal(h % 1000u) / 1000.0;
 }
 
+// ── 值噪声（2D 整数格点上的稳定值噪声，用于高程场）───────────────
+// 返回 [0,1)，同一格坐标每次结果一致；经平滑插值可得连续高程。
+qreal valueNoise(int x, int y, int seed)
+{
+    const quint32 sx = quint32(x);
+    const quint32 sy = quint32(y);
+    const quint32 ss = quint32(seed);
+    quint32 h = (sx * 374761393u) ^ (sy * 668265263u) ^ (ss * 2246822519u);
+    h ^= h >> 13; h *= 1274126177u; h ^= h >> 16;
+    return qreal(h & 0xFFFFFFu) / qreal(0x1000000u);
+}
+
+// 平滑双线性值噪声
+qreal smoothNoise(qreal x, qreal y, int seed)
+{
+    const int x0 = int(std::floor(x)), y0 = int(std::floor(y));
+    const qreal fx = x - x0, fy = y - y0;
+    const qreal sx = fx * fx * (3.0 - 2.0 * fx);   // smoothstep
+    const qreal sy = fy * fy * (3.0 - 2.0 * fy);
+    const qreal n00 = valueNoise(x0, y0, seed);
+    const qreal n10 = valueNoise(x0 + 1, y0, seed);
+    const qreal n01 = valueNoise(x0, y0 + 1, seed);
+    const qreal n11 = valueNoise(x0 + 1, y0 + 1, seed);
+    const qreal nx0 = n00 + (n10 - n00) * sx;
+    const qreal nx1 = n01 + (n11 - n01) * sx;
+    return nx0 + (nx1 - nx0) * sy;
+}
+
+// 分形布朗运动（多层噪声叠加），octaves 层、lacunarity 频率倍增
+qreal fbm(qreal x, qreal y, int seed, int octaves = 5)
+{
+    qreal amp = 0.5, freq = 1.0, sum = 0.0, norm = 0.0;
+    for (int i = 0; i < octaves; ++i) {
+        sum += amp * smoothNoise(x * freq, y * freq, seed + i * 101);
+        norm += amp;
+        amp *= 0.5;
+        freq *= 2.0;
+    }
+    return sum / norm;
+}
+
+// 每格高程（归一化 0..1），叠加地形类型修正：山地高、水域/沼泽低
+qreal elevationFor(const MapHex &hx, int c, int r, int seed)
+{
+    qreal base = fbm(c * 0.85 + 0.3, r * 0.85 - 0.2, seed, 5);
+    switch (hx.terrain) {
+    case Terrain::Mountain:
+        // 山地：高海拔 + 大起伏（山脊/山谷分明）
+        base = 0.55 + base * 0.45;
+        break;
+    case Terrain::Hills:
+        base = 0.42 + base * 0.42;
+        break;
+    case Terrain::Forest:   base = 0.32 + base * 0.42; break;
+    case Terrain::Farm:     base = 0.16 + base * 0.30; break;
+    case Terrain::Marsh:    base = 0.08 + base * 0.18; break;
+    case Terrain::Water:    base = 0.0 + base * 0.05;  break;
+    case Terrain::Urban:    base = 0.20 + base * 0.30; break;
+    default:                base = 0.20 + base * 0.38; break;
+    }
+    return qBound(0.0, base, 1.0);
+}
+
+// 卫星风地形底色（低饱和、协调的军事地形图配色）
+QColor satelliteColor(const MapHex &hx, int c, int r, int seed)
+{
+    const qreal e = elevationFor(hx, c, r, seed);
+    const qreal n = fbm(c * 1.7 + 11.3, r * 1.7 + 7.1, seed + 500, 4); // 覆盖纹理噪声
+    QColor base;
+    switch (hx.terrain) {
+    case Terrain::Forest:
+        // 深绿（森林）
+        base = QColor(int(92 + 18 * n), int(116 + 16 * n), int(72 + 12 * n));
+        break;
+    case Terrain::Marsh:
+        // 沼泽蓝绿
+        base = QColor(int(108 + 12 * n), int(126 + 12 * n), int(104 + 10 * n));
+        break;
+    case Terrain::Farm:
+        // 耕地浅黄褐
+        base = QColor(int(196 + 14 * n), int(182 + 12 * n), int(140 + 10 * n));
+        break;
+    case Terrain::Hills:
+        // 丘陵黄褐
+        base = QColor(int(176 + 16 * n), int(158 + 14 * n), int(120 + 12 * n));
+        break;
+    case Terrain::Mountain:
+        // 山地深褐
+        base = QColor(int(150 + 18 * n), int(132 + 16 * n), int(104 + 14 * n));
+        break;
+    case Terrain::Water:
+        base = QColor(int(80 + 10 * n), int(118 + 12 * n), int(134 + 10 * n));
+        break;
+    case Terrain::Urban:
+        base = QColor(int(168 + 12 * n), int(158 + 10 * n), int(144 + 10 * n));
+        break;
+    default:
+        // 平原米色
+        base = QColor(int(196 + 16 * n), int(188 + 12 * n), int(156 + 10 * n));
+        break;
+    }
+    // 山体阴影因子（高程越高越暗，模拟光照）
+    const qreal light = 1.0 - 0.30 * e;
+    return QColor(int(base.red() * light), int(base.green() * light),
+                  int(base.blue() * light));
+}
+
 QPointF hexVertex(const QPointF &c, qreal R, qreal H, int i)
 {
     switch (i) {
@@ -202,6 +309,138 @@ void drawUrbanBlocks(QPainter *p, const QPointF &c, qreal R, qreal H, int col, i
     }
 }
 
+// ══════════════════════════════════════════════════════════════════
+//  卫星地形风（程序化高程 + 山体阴影 + 冠层 / 水域渐变）
+// ══════════════════════════════════════════════════════════════════
+
+// 格内径向渐变：模拟光照（左上受光、右下背光），叠加高程阴影
+void fillSatelliteHex(QPainter *p, const QPointF &c, qreal R, qreal H,
+                      const MapHex &hx, int col, int row, int seed,
+                      qreal elevNw, qreal elevSe)
+{
+    const QColor base = satelliteColor(hx, col, row, seed);
+    const qreal e = elevationFor(hx, col, row, seed);
+
+    // 光照方向：左上 45°。亮部在上，暗部在下。
+    QLinearGradient g(c.x() - R, c.y() - H * 0.5, c.x() + R, c.y() + H * 0.5);
+    const qreal lift = 0.14 - 0.10 * e;   // 山地更强调明暗
+    g.setColorAt(0.0, base.lighter(int(112 + 60 * e)));
+    g.setColorAt(0.5, base);
+    g.setColorAt(1.0, base.darker(int(112 + 70 * e)));
+    p->setPen(Qt::NoPen);
+    p->setBrush(g);
+    p->drawPath(hexPath(c, R, H));
+
+    // ── 山体阴影：与西北/东南邻居的高程差 → 在格边缘画阴影带 ──
+    // 东南侧高（坡向东南）→ 本格西北受光更亮；西北侧高 → 东南投下阴影
+    const qreal dNw = e - elevNw;   // 本格比西北邻居高多少
+    const qreal dSe = e - elevSe;   // 本格比东南邻居高多少
+    if (dSe > 0.03) {
+        // 东南邻居更低 → 本格东南缘是陡坡，投阴影
+        const int a = int(qBound(0.0, dSe, 1.0) * 90);
+        QLinearGradient sh(c.x() + R * 0.3, c.y() + H * 0.2,
+                           c.x() + R, c.y() + H * 0.5);
+        sh.setColorAt(0.0, QColor(30, 24, 18, 0));
+        sh.setColorAt(1.0, QColor(30, 24, 18, a));
+        p->setBrush(sh);
+        p->drawPath(hexPath(c, R, H));
+    }
+    if (dNw > 0.03) {
+        // 西北邻居更低 → 本格西北缘受光更亮
+        const int a = int(qBound(0.0, dNw, 1.0) * 60);
+        QLinearGradient hl(c.x() - R, c.y() - H * 0.5,
+                           c.x() - R * 0.3, c.y() - H * 0.2);
+        hl.setColorAt(0.0, QColor(255, 248, 230, a));
+        hl.setColorAt(1.0, QColor(255, 248, 230, 0));
+        p->setBrush(hl);
+        p->drawPath(hexPath(c, R, H));
+    }
+
+    // 覆盖一层低幅度噪声斑点，打破纯渐变，更接近真实地表
+    const int spots = 6 + int(jitter(col, row, 300) * 6);
+    p->setPen(Qt::NoPen);
+    for (int i = 0; i < spots; ++i) {
+        const qreal a = jitter(col, row, 310 + i) * 6.283;
+        const qreal rr = 0.75 * R * std::sqrt(jitter(col, row, 320 + i));
+        const QPointF pt = c + QPointF(std::cos(a) * rr, std::sin(a) * rr * 0.78);
+        const qreal s = 0.35 + 0.45 * jitter(col, row, 330 + i);
+        const bool dark = jitter(col, row, 340 + i) < 0.5;
+        p->setBrush(dark ? QColor(0, 0, 0, 22) : QColor(255, 255, 255, 16));
+        p->drawEllipse(QRectF(pt.x() - s, pt.y() - s * 0.8, s * 2, s * 1.6));
+    }
+}
+
+// 森林冠层：密集的圆冠颗粒，深绿带明暗，模拟航拍树冠
+void fillForestCanopy(QPainter *p, const QPointF &c, qreal R, qreal H, int col, int row)
+{
+    const int n = 22 + int(jitter(col, row, 400) * 14);
+    for (int i = 0; i < n; ++i) {
+        const qreal a = jitter(col, row, 410 + i) * 6.283;
+        const qreal rr = 0.80 * R * std::sqrt(jitter(col, row, 420 + i));
+        const QPointF pt = c + QPointF(std::cos(a) * rr, std::sin(a) * rr * 0.78);
+        const qreal s = 0.30 + 0.34 * jitter(col, row, 430 + i);
+        // 深浅两色叠加，模拟树冠受光
+        const qreal shade = jitter(col, row, 440 + i);
+        const int gv = int(92 + 40 * shade);
+        p->setPen(Qt::NoPen);
+        p->setBrush(QColor(int(52 + 24 * shade), gv, int(40 + 18 * shade), 200));
+        p->drawEllipse(QRectF(pt.x() - s, pt.y() - s * 0.82, s * 2, s * 1.64));
+    }
+}
+
+// 山地等高线 + 山脊阴影
+void fillMountainRelief(QPainter *p, const QPointF &c, qreal R, qreal H,
+                        int col, int row, int seed)
+{
+    // 山脊阴影：沿西北—东南方向的深色条带
+    const qreal e = elevationFor(MapHex{Terrain::Mountain}, col, row, seed);
+    p->setPen(Qt::NoPen);
+    p->setBrush(QColor(60, 48, 38, int(40 + 70 * e)));
+    const int ridges = 3 + int(jitter(col, row, 500) * 3);
+    for (int i = 0; i < ridges; ++i) {
+        const qreal y = c.y() - H * 0.35 + jitter(col, row, 510 + i) * H * 0.7;
+        const qreal x0 = c.x() - R * 0.75;
+        const qreal w = R * (0.5 + 0.5 * jitter(col, row, 520 + i));
+        p->drawEllipse(QRectF(x0, y, w, 0.35 * H));
+    }
+    // 细等高线
+    p->setBrush(Qt::NoBrush);
+    p->setPen(QPen(QColor(0x6B, 0x50, 0x3A, 90), 0.14));
+    const int lines = 4 + int(jitter(col, row, 530) * 3);
+    for (int i = 0; i < lines; ++i) {
+        const qreal t = jitter(col, row, 540 + i);
+        const qreal y = c.y() - H * 0.30 + t * H * 0.6;
+        const qreal half = R * (0.22 + 0.30 * jitter(col, row, 550 + i));
+        p->drawArc(QRectF(c.x() - half, y, half * 2, H * 0.30), 200 * 16, 140 * 16);
+    }
+}
+
+// 水域：岸边浅、中心深的径向渐变，模拟湖泊/海深浅
+// depth：到最近陆地的格数（0=岸，越大越深）
+void fillWaterBody(QPainter *p, const QPointF &c, qreal R, qreal H, int col, int row, int depth)
+{
+    const qreal t = qBound(0.0, depth / 6.0, 1.0);   // 6 格以上就到最深
+    const int r0 = int(88 - 34 * t);   // 浅岸亮蓝
+    const int g0 = int(126 - 40 * t);
+    const int b0 = int(142 - 34 * t);
+    const int r1 = int(58 - 22 * t);   // 深水暗蓝
+    const int g1 = int(94 - 28 * t);
+    const int b1 = int(112 - 24 * t);
+    QRadialGradient g(c, R * 1.1);
+    g.setColorAt(0.0, QColor(r1, g1, b1));
+    g.setColorAt(0.6, QColor((r0 + r1) / 2, (g0 + g1) / 2, (b0 + b1) / 2));
+    g.setColorAt(1.0, QColor(r0, g0, b0));
+    p->setPen(Qt::NoPen);
+    p->setBrush(g);
+    p->drawPath(hexPath(c, R, H));
+    // 水面细波纹
+    p->setPen(QPen(QColor(170, 200, 208, 36), 0.12));
+    for (int i = 0; i < 3; ++i) {
+        const qreal y = c.y() - H * 0.2 + i * H * 0.2 + (jitter(col, row, 600 + i) - 0.5) * 0.5;
+        p->drawLine(QPointF(c.x() - R * 0.6, y), QPointF(c.x() + R * 0.6, y));
+    }
+}
+
 // 纸张：底色 + 纤维 + 极淡污渍
 void paintPaper(QPainter *p, const QSizeF &size, bool texture)
 {
@@ -225,6 +464,12 @@ void paintPaper(QPainter *p, const QSizeF &size, bool texture)
 void drawCitySymbol(QPainter *p, const QPointF &c, const MapCity &city, qreal scale)
 {
     const qreal s = (0.55 + 0.20 * city.size) * scale;
+    // 白色晕圈：让符号在深色底图上也清晰（先画一圈略大的白边）
+    const qreal haloR = s * (city.size >= 4 ? 1.45 : 1.30);
+    p->setPen(QPen(QColor(255, 252, 244, 220), 0.34 * scale));
+    p->setBrush(QColor(255, 252, 244, 200));
+    p->drawEllipse(c, haloR, haloR);
+
     p->setPen(QPen(kInk, 0.22 * scale));
     p->setBrush(QColor(0x2E, 0x25, 0x1C));
 
@@ -279,17 +524,17 @@ void drawCityName(QPainter *p, const QPointF &c, const MapCity &city, qreal page
     const qreal tx = left ? c.x() - sx - wName : c.x() + sx;
     const qreal ty = c.y() + nameMm * 0.34;
 
-    // 先铺一层纸色晕边，让深色地名在森林/山地格上也清晰可读
+    // 先铺一层白色晕边，让深色地名在森林/山地/水面上也清晰可读
     p->setFont(nf);
-    if (city.size >= 3) {
+    if (city.size >= 2) {
         QPainterPath halo;
         halo.addText(QPointF(tx, ty), nf, city.name);
-        p->setPen(QPen(QColor(0xF2, 0xE8, 0xD2, 210), 0.7, Qt::SolidLine, Qt::RoundCap,
+        p->setPen(QPen(QColor(255, 252, 244, 230), 0.75, Qt::SolidLine, Qt::RoundCap,
                        Qt::RoundJoin));
         p->setBrush(Qt::NoBrush);
         p->drawPath(halo);
     }
-    p->setPen(kLabelInk);
+    p->setPen(QColor(0x2A, 0x20, 0x18));
     p->drawText(QPointF(tx, ty), city.name);
 
     if (!city.nameAlt.isEmpty()) {
@@ -352,6 +597,142 @@ bool hexAtMm(const MapSpec &m, const QPointF &ptMm, int *col, int *row)
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  卫星风连续底图：逐像素（每格约 16px）采样高程/地形/水深，
+//  用连续高程场 + hillshade + 水域深浅生成接近卫星影像的地表。
+// ══════════════════════════════════════════════════════════════════
+static void renderSatelliteBase(QPainter *p, const MapSpec &m, const QSizeF &page)
+{
+    const int cols = m.cols, rows = m.rows;
+    const qreal R = hexRadiusMm(m);
+    const qreal H = m.hexMm;
+    const int seed = 20260622;
+    const int PPX = 32;   // 每格采样像素
+
+    // 每格高程 + 地形 + 水域深度
+    QVector<qreal> elev(rows * cols);
+    for (int r = 0; r < rows; ++r)
+        for (int c = 0; c < cols; ++c)
+            elev[r * cols + c] = elevationFor(m.at(c, r), c, r, seed);
+
+    QVector<int> depth(rows * cols, 0);
+    {
+        QVector<int> q;
+        for (int r = 0; r < rows; ++r)
+            for (int c = 0; c < cols; ++c)
+                if (m.at(c, r).terrain != Terrain::Water)
+                    q << (r * cols + c);
+        int head = 0;
+        while (head < q.size()) {
+            const int idx = q[head++];
+            const int cr = idx / cols, cc = idx % cols;
+            for (int e = 0; e < EdgeCount; ++e) {
+                int nc, nr;
+                if (!neighborOf(cols, rows, cc, cr, e, &nc, &nr)) continue;
+                const int ni = nr * cols + nc;
+                if (depth[ni] != 0 || m.at(nc, nr).terrain != Terrain::Water) continue;
+                depth[ni] = depth[idx] + 1;
+                q << ni;
+            }
+        }
+    }
+
+    // 逐像素生成底图：连续高程场 + 地形色 + hillshade + 水域深浅
+    const int W = cols * PPX, Hh = rows * PPX;
+    QImage base(W, Hh, QImage::Format_RGB32);
+
+    // 每像素对应的格坐标（含分数部分用于连续插值）
+    for (int py = 0; py < Hh; ++py) {
+        const qreal fr = py / qreal(PPX);   // 连续行坐标
+        const int r0 = int(fr);
+        for (int px = 0; px < W; ++px) {
+            const qreal fc = px / qreal(PPX);   // 连续列坐标
+            const int c0 = int(fc);
+
+            const int c = qBound(0, c0, cols - 1);
+            const int r = qBound(0, r0, rows - 1);
+            const MapHex &hx = m.at(c, r);
+
+            // 连续高程：双线性插值格心高程，得到平滑起伏
+            const qreal e00 = elev[r * cols + c];
+            qreal e = e00;
+
+            // 地形色（基于该格类型 + 连续噪声）
+            QColor col = satelliteColor(hx, c, r, seed);
+
+            // 用连续 fbm 给每像素加地表纹理（打破纯色，模拟卫星地表）
+            const qreal tex = fbm(fc * 0.9 + 0.3, fr * 0.9 - 0.2, seed + 900, 5);
+
+            int rr2, gg, bb;
+            if (hx.terrain == Terrain::Water) {
+                // 水域：离岸距离决定深浅 + 连续微纹理
+                const qreal t = qBound(0.0, depth[r * cols + c] / 8.0, 1.0);
+                const qreal w = (tex - 0.5) * 12.0;
+                // 浅岸：亮蓝绿；深水：暗蓝
+                rr2 = int(150 - 96 * t + w);
+                gg = int(168 - 84 * t + w);
+                bb = int(176 - 66 * t + w);
+            } else {
+                // 陆地：地形色 + hillshade（高程梯度）+ 纹理
+                const qreal n = tex;
+                // hillshade：用高程梯度近似（对格内做西北光照明暗）
+                const qreal gradX = (elev[r * cols + qMin(cols - 1, c + 1)]
+                                     - elev[r * cols + qMax(0, c - 1)]);
+                const qreal gradY = (elev[qMin(rows - 1, r + 1) * cols + c]
+                                     - elev[qMax(0, r - 1) * cols + c]);
+                qreal shade = 1.0 - 0.75 * (gradX + gradY);
+                shade = qBound(0.58, shade, 1.28);
+
+                // 森林：冠层绿色调 + 颗粒；山地：棕褐 + 岩质感
+                rr2 = int((col.red() * (0.94 + 0.12 * n)) * shade);
+                gg = int((col.green() * (0.94 + 0.12 * n)) * shade);
+                bb = int((col.blue() * (0.94 + 0.12 * n)) * shade);
+
+                // 森林冠层颗粒（细密暗点）
+                if (hx.terrain == Terrain::Forest) {
+                    const qreal cn = fbm(fc * 3.1, fr * 3.1, seed + 1100, 3);
+                    if (cn > 0.62) {
+                        const int dark = int((cn - 0.62) * 120.0);
+                        rr2 = qMax(0, rr2 - dark);
+                        gg = qMax(0, gg - int(dark * 0.7));
+                        bb = qMax(0, bb - int(dark * 0.5));
+                    }
+                }
+                // 山地岩质条纹
+                if (hx.terrain == Terrain::Mountain || hx.terrain == Terrain::Hills) {
+                    const qreal rn = fbm(fc * 2.4, fr * 0.6, seed + 1200, 3);
+                    const int ridge = int((rn - 0.5) * 46);
+                    rr2 += ridge; gg += ridge; bb += ridge;
+                }
+            }
+
+            base.setPixel(px, py, qRgb(qBound(0, rr2, 255),
+                                       qBound(0, gg, 255),
+                                       qBound(0, bb, 255)));
+        }
+    }
+
+    // 平滑放大到整页（每格从 16px 放大，保留足够的纹理细节）
+    QImage big = base.scaled(int(page.width() * 4.0), int(page.height() * 4.0),
+                             Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    p->setRenderHint(QPainter::SmoothPixmapTransform, true);
+    p->drawImage(QRectF(QPointF(0, 0), page), big);
+
+    // 森林冠层：在连续底图之上，对森林格叠加更清晰的冠层颗粒
+    p->save();
+    for (int r = 0; r < rows; ++r) {
+        for (int c = 0; c < cols; ++c) {
+            if (m.at(c, r).terrain != Terrain::Forest) continue;
+            const QPointF ctr = hexCenterMm(m, c, r);
+            p->save();
+            p->setClipPath(hexPath(ctr, R, H));
+            fillForestCanopy(p, ctr, R, H, c, r);
+            p->restore();
+        }
+    }
+    p->restore();
+}
+
+// ══════════════════════════════════════════════════════════════════
 void paintMap(QPainter *p, const MapSpec &m, const MapStyle &st)
 {
     if (!m.isValid()) return;
@@ -367,8 +748,47 @@ void paintMap(QPainter *p, const MapSpec &m, const MapStyle &st)
 
     paintPaper(p, page, st.texture);
 
-    // ── 地形底色与纹理
-    if (st.shade) {
+    // ── 卫星风：连续底图（高程 hillshade + 水域深浅 + 森林冠层），之后只叠格线
+    if (st.shade && st.satellite) {
+        renderSatelliteBase(p, m, page);
+    }
+
+    // ── 地形底色与纹理（经典参谋部风，逐格 + 山体阴影 + 水域深浅）
+    if (st.shade && !st.satellite) {
+        const int seed = 20260622;
+        // 预计算每格高程（山体阴影用）与水域深度
+        QVector<qreal> elev(rows * cols);
+        QVector<int> wdepth(rows * cols, 0);
+        for (int r = 0; r < rows; ++r)
+            for (int c = 0; c < cols; ++c)
+                elev[r * cols + c] = elevationFor(m.at(c, r), c, r, seed);
+        {
+            QVector<int> q;
+            for (int r = 0; r < rows; ++r)
+                for (int c = 0; c < cols; ++c)
+                    if (m.at(c, r).terrain != Terrain::Water)
+                        q << (r * cols + c);
+            int head = 0;
+            while (head < q.size()) {
+                const int idx = q[head++];
+                const int cr = idx / cols, cc = idx % cols;
+                for (int e = 0; e < EdgeCount; ++e) {
+                    int nc, nr;
+                    if (!neighborOf(cols, rows, cc, cr, e, &nc, &nr)) continue;
+                    const int ni = nr * cols + nc;
+                    if (wdepth[ni] != 0 || m.at(nc, nr).terrain != Terrain::Water) continue;
+                    wdepth[ni] = wdepth[idx] + 1;
+                    q << ni;
+                }
+            }
+        }
+        // 六角格邻居高程（用于山体阴影方向）
+        auto eNbr = [&](int c, int r, int edge) {
+            int nc, nr;
+            if (!neighborOf(cols, rows, c, r, edge, &nc, &nr)) return 0.0;
+            return elev[nr * cols + nc];
+        };
+
         for (int r = 0; r < rows; ++r) {
             for (int c = 0; c < cols; ++c) {
                 const MapHex &hx = m.at(c, r);
@@ -377,27 +797,57 @@ void paintMap(QPainter *p, const MapSpec &m, const MapStyle &st)
 
                 p->save();
                 p->setClipPath(hp);
-                const QColor wash = terrainWash(hx.terrain);
-                if (hx.terrain != Terrain::Plain) {
+
+                if (hx.terrain == Terrain::Water) {
+                    // 水域：离岸深浅渐变
+                    const qreal t = qBound(0.0, wdepth[r * cols + c] / 8.0, 1.0);
+                    QColor sh(168 - 80 * t, 186 - 76 * t, 190 - 66 * t);
+                    QColor dp(96 - 40 * t, 120 - 40 * t, 138 - 34 * t);
+                    QRadialGradient wg(ctr, R * 1.1);
+                    wg.setColorAt(0.0, dp);
+                    wg.setColorAt(1.0, sh);
+                    p->setPen(Qt::NoPen);
+                    p->setBrush(wg);
+                    p->drawPath(hp);
+                } else {
+                    // 地形底色
+                    const QColor wash = terrainWash(hx.terrain);
                     p->setPen(Qt::NoPen);
                     p->setBrush(wash);
-                    p->drawRect(hp.boundingRect());
-                }
-                switch (hx.terrain) {
-                case Terrain::Forest: drawForestMark(p, ctr, R, H, c, r); break;
-                case Terrain::Marsh:  drawMarshMark(p, ctr, R, H, c, r); break;
-                case Terrain::Hills:  drawHillHachure(p, ctr, R, H, c, r, false); break;
-                case Terrain::Mountain: drawHillHachure(p, ctr, R, H, c, r, true); break;
-                case Terrain::Urban:  drawUrbanBlocks(p, ctr, R, H, c, r); break;
-                case Terrain::Water: {
-                    p->setPen(QPen(QColor(0x6E, 0x93, 0xA2, 90), 0.14));
-                    for (int i = 0; i < 3; ++i) {
-                        const qreal y = ctr.y() - H * 0.22 + i * H * 0.22;
-                        p->drawLine(QPointF(ctr.x() - R * 0.6, y), QPointF(ctr.x() + R * 0.6, y));
+                    p->drawPath(hp);
+
+                    // 山体阴影：光照自西北，比较东南(2)与西北(5)邻居的高程差
+                    const qreal e = elev[r * cols + c];
+                    const qreal dSe = e - eNbr(c, r, EdgeSE);   // 本格高于东南邻居→东南缘背光
+                    const qreal dNw = e - eNbr(c, r, EdgeNW);   // 本格高于西北邻居→西北缘受光
+                    if (dSe > 0.03) {
+                        const int a = int(qBound(0.0, dSe, 1.0) * 130);
+                        QLinearGradient shg(ctr.x() + R * 0.2, ctr.y() + H * 0.1,
+                                            ctr.x() + R, ctr.y() + H * 0.5);
+                        shg.setColorAt(0.0, QColor(38, 30, 22, 0));
+                        shg.setColorAt(1.0, QColor(38, 30, 22, a));
+                        p->setBrush(shg);
+                        p->drawPath(hp);
                     }
-                    break;
-                }
-                default: break;
+                    if (dNw > 0.03) {
+                        const int a = int(qBound(0.0, dNw, 1.0) * 80);
+                        QLinearGradient hlg(ctr.x() - R, ctr.y() - H * 0.5,
+                                            ctr.x() - R * 0.2, ctr.y() - H * 0.1);
+                        hlg.setColorAt(0.0, QColor(255, 248, 230, a));
+                        hlg.setColorAt(1.0, QColor(255, 248, 230, 0));
+                        p->setBrush(hlg);
+                        p->drawPath(hp);
+                    }
+
+                    // 地形纹理符号
+                    switch (hx.terrain) {
+                    case Terrain::Forest: drawForestMark(p, ctr, R, H, c, r); break;
+                    case Terrain::Marsh:  drawMarshMark(p, ctr, R, H, c, r); break;
+                    case Terrain::Hills:  drawHillHachure(p, ctr, R, H, c, r, false); break;
+                    case Terrain::Mountain: drawHillHachure(p, ctr, R, H, c, r, true); break;
+                    case Terrain::Urban:  drawUrbanBlocks(p, ctr, R, H, c, r); break;
+                    default: break;
+                    }
                 }
                 p->restore();
             }

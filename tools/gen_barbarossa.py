@@ -384,10 +384,58 @@ THEATERS = [
             ("第 聂 伯 河", 32.2, 47.6, 4.0, -60),
         ],
     },
+    {
+        "file": "巴巴罗萨-全线.json",
+        "title": "巴巴罗萨行动 · 全线战场",
+        "subtitle": "Unternehmen Barbarossa — 22 June 1941",
+        "date": "1941 年 6 月 22 日 · 波罗的海 — 黑海 · 东普鲁士 — 莫斯科",
+        "note": "格边 16 mm · 1 格 ≈ 27 km",
+        "window": (18.8, 38.4, 44.2, 62.2),
+        "cols": 58,
+        "rows": 68,
+        "hexMm": 16.0,
+        "marginMm": 14.0,
+        "titleMm": 38.0,
+        "legendMm": 24.0,
+        "paper": "A0",
+        "labels": [
+            ("波 罗 的 海", 21.0, 58.8, 8.0, -10),
+            ("芬 兰", 26.0, 62.0, 5.0, 0),
+            ("芬 兰 湾", 27.0, 60.0, 4.4, 0),
+            ("拉 多 加 湖", 31.0, 60.8, 4.0, 0),
+            ("爱 沙 尼 亚", 25.6, 58.9, 4.4, 0),
+            ("拉 脱 维 亚", 24.8, 57.2, 4.4, 0),
+            ("立 陶 宛", 24.2, 55.4, 4.4, 0),
+            ("东 普 鲁 士", 20.6, 54.6, 4.4, 0),
+            ("波 兰", 21.6, 52.2, 5.4, 0),
+            ("白 俄 罗 斯", 27.6, 54.4, 5.6, 0),
+            ("乌 克 兰", 31.0, 49.6, 6.2, 0),
+            ("普里皮亚季沼泽", 26.6, 51.6, 4.4, -6),
+            ("斯摩棱斯克高地", 33.0, 55.2, 4.2, 0),
+            ("中俄罗斯高地", 35.4, 53.0, 4.2, 0),
+            ("喀尔巴阡山", 24.2, 48.4, 4.2, -16),
+            ("黑 海", 32.4, 45.0, 6.0, 0),
+            ("亚 速 海", 37.0, 46.2, 3.8, 0),
+            ("克里木", 34.2, 45.3, 4.2, 0),
+            ("第 聂 伯 河", 30.4, 50.4, 4.0, 64),
+            ("莫 斯 科", 37.6, 55.9, 4.6, 0),
+        ],
+    },
 ]
 
 
 def build(theater):
+    global COLS, ROWS, R, HEX_MM, COL_PITCH, MARGIN, TITLE, LEGEND
+    # 每张图可用自己的格数 / 格距 / 纸张（默认沿用模块常量）
+    COLS = theater.get("cols", COLS)
+    ROWS = theater.get("rows", ROWS)
+    HEX_MM = theater.get("hexMm", HEX_MM)
+    MARGIN = theater.get("marginMm", MARGIN)
+    TITLE = theater.get("titleMm", TITLE)
+    LEGEND = theater.get("legendMm", LEGEND)
+    R = HEX_MM / math.sqrt(3.0)
+    COL_PITCH = 1.5 * R
+
     lon0, lon1, lat0, lat1 = theater["window"]
     grid = Grid(lon0, lon1, lat0, lat1)
     km = grid.km_per_hex()

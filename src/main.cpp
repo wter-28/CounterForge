@@ -119,7 +119,10 @@ int main(int argc, char *argv[])
         QString out = argValue(QStringLiteral("--mapout"), QString());
         if (out.isEmpty()) out = QFileInfo(specPath).absolutePath() + QLatin1Char('/')
                                  + QFileInfo(specPath).completeBaseName() + QStringLiteral(".png");
-        QImage img = cf::mapImage(m, dpi);
+        cf::MapStyle st;
+        const QString styleArg = argValue(QStringLiteral("--mapstyle"), QString());
+        st.satellite = (styleArg == QLatin1String("satellite"));
+        QImage img = cf::mapImage(m, dpi, st);
         if (!img.save(out)) {
             fprintf(stderr, "写入失败：%s\n", qPrintable(out));
             return 2;
